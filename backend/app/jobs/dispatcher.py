@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.logging import configure_logging
 from app.database.session import create_engine
-from app.models import ImportJob, RepositoryIndex
+from app.models import ImportJob, RepositoryIndex, SearchIndex
 
 logger = logging.getLogger("repopilot.dispatcher")
 
@@ -18,7 +18,7 @@ logger = logging.getLogger("repopilot.dispatcher")
 async def dispatch_once(
     factory: async_sessionmaker[AsyncSession],
     publish: Callable[[UUID], Awaitable[None]],
-    model: type[ImportJob] | type[RepositoryIndex] = ImportJob,
+    model: type[ImportJob] | type[RepositoryIndex] | type[SearchIndex] = ImportJob,
 ) -> None:
     now = datetime.now(UTC)
     async with factory() as db:
@@ -93,11 +93,17 @@ async def main() -> None:
             celery_app.send_task, "repopilot.index_repository", args=[str(job_id)]
         )
 
+    async def publish_search(job_id: UUID) -> None:
+        await asyncio.to_thread(
+            celery_app.send_task, "repopilot.prepare_search", args=[str(job_id)]
+        )
+
     try:
         while True:
             try:
                 await dispatch_once(factory, publish)
                 await dispatch_once(factory, publish_index, RepositoryIndex)
+                await dispatch_once(factory, publish_search, SearchIndex)
             except Exception as exc:
                 logger.error("dispatch_cycle_failed", extra={"error_type": type(exc).__name__})
             await asyncio.sleep(settings.dispatcher_interval_seconds)

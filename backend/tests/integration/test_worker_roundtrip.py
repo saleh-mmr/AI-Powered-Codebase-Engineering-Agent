@@ -30,6 +30,7 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     user_id, repo_id, job_id = uuid4(), uuid4(), uuid4()
     index_id = uuid4()
+    search_id = uuid4()
     queue = "test-" + uuid4().hex
 
     async def resolve(self, owner, name):
@@ -130,6 +131,48 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
         finally:
             await engine.dispose()
 
+    async def queue_search():
+        from app.models import SearchIndex
+        from app.retrieval.text import VERSION
+
+        engine = create_engine(settings)
+        try:
+            async with async_sessionmaker(engine)() as db:
+                db.add(
+                    SearchIndex(
+                        id=search_id,
+                        repository_id=repo_id,
+                        source_index_id=index_id,
+                        commit_sha="a" * 40,
+                        pipeline_version=VERSION,
+                        mode="keyword",
+                        provider_profile="none",
+                        token_budget=200000,
+                        price_per_million=0,
+                    )
+                )
+                await db.commit()
+        finally:
+            await engine.dispose()
+
+    async def verify_search():
+        from app.models import SearchIndex
+
+        engine = create_engine(settings)
+        try:
+            for _ in range(100):
+                async with async_sessionmaker(engine)() as db:
+                    state = await db.scalar(
+                        select(SearchIndex.status).where(SearchIndex.id == search_id)
+                    )
+                    if state == "completed":
+                        return
+                    assert state != "failed"
+                await asyncio.sleep(0.1)
+            raise AssertionError("Search worker did not complete within 10 seconds")
+        finally:
+            await engine.dispose()
+
     async def cleanup():
         engine = create_engine(settings)
         try:
@@ -148,5 +191,8 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
             asyncio.run(queue_index())
             celery_app.send_task("repopilot.index_repository", args=[str(index_id)], queue=queue)
             asyncio.run(verify_index())
+            asyncio.run(queue_search())
+            celery_app.send_task("repopilot.prepare_search", args=[str(search_id)], queue=queue)
+            asyncio.run(verify_search())
     finally:
         asyncio.run(cleanup())

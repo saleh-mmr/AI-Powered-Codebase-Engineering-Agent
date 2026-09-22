@@ -1,0 +1,119 @@
+{
+  "version": "retrieval-fixture-v1",
+  "cases": [
+    {
+      "id": "exact-token",
+      "query": "verify_access_token",
+      "category": "identifier",
+      "relevant": [
+        "auth.py::verify_access_token"
+      ]
+    },
+    {
+      "id": "exact-owner",
+      "query": "require_repository_owner",
+      "category": "identifier",
+      "relevant": [
+        "auth.py::require_repository_owner"
+      ]
+    },
+    {
+      "id": "refund",
+      "query": "Where is refund payment handled?",
+      "category": "lexical",
+      "relevant": [
+        "payments.py::refund_payment"
+      ]
+    },
+    {
+      "id": "invoice",
+      "query": "calculate invoice total tax",
+      "category": "lexical",
+      "relevant": [
+        "payments.py::calculate_invoice_total"
+      ]
+    },
+    {
+      "id": "recovery",
+      "query": "How does abandoned work get picked up after a worker disappears?",
+      "category": "paraphrase",
+      "relevant": [
+        "jobs.py::claim_expired_job"
+      ]
+    },
+    {
+      "id": "cancel",
+      "query": "Revoke the lease when cancelling a job",
+      "category": "lexical",
+      "relevant": [
+        "jobs.py::cancel_job"
+      ]
+    },
+    {
+      "id": "path-security",
+      "query": "Prevent an archive from writing outside its destination",
+      "category": "paraphrase",
+      "relevant": [
+        "archive.py::validate_archive_path"
+      ]
+    },
+    {
+      "id": "size-limit",
+      "query": "maximum text file byte limit",
+      "category": "lexical",
+      "relevant": [
+        "archive.py::accept_text_file"
+      ]
+    },
+    {
+      "id": "hash",
+      "query": "source_fingerprint",
+      "category": "identifier",
+      "relevant": [
+        "indexing.py::source_fingerprint"
+      ]
+    },
+    {
+      "id": "split-name",
+      "query": "snake case keyword retrieval",
+      "category": "lexical",
+      "relevant": [
+        "indexing.py::lexical_terms"
+      ]
+    },
+    {
+      "id": "credential",
+      "query": "Check whether a bearer credential is authentic without timing leaks",
+      "category": "paraphrase",
+      "relevant": [
+        "auth.py::verify_access_token"
+      ]
+    },
+    {
+      "id": "archive-safety",
+      "query": "archive path validation and file size limit",
+      "category": "multi_evidence",
+      "relevant": [
+        "archive.py::validate_archive_path",
+        "archive.py::accept_text_file"
+      ]
+    },
+    {
+      "id": "jobs-lifecycle",
+      "query": "cancel a job and recover expired worker leases",
+      "category": "multi_evidence",
+      "relevant": [
+        "jobs.py::cancel_job",
+        "jobs.py::claim_expired_job"
+      ]
+    },
+    {
+      "id": "remove-cache",
+      "query": "evict_cache_entry",
+      "category": "identifier",
+      "relevant": [
+        "cache.py::evict_cache_entry"
+      ]
+    }
+  ]
+}

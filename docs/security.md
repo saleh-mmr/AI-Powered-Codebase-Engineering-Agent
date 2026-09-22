@@ -86,3 +86,27 @@ parent-symbol and chunk-symbol consistency. Source is escaped React text. Logs o
 source, signatures and docstrings. Failed replacement attempts retain the prior
 completed index. Imported repository text remains untrusted prompt input when RAG
 is added; indexing does not make it trusted instructions.
+
+
+## Milestone 5 retrieval and external embeddings
+
+Keyword/symbol mode does not call a model. Semantic mode defaults off and requires
+server configuration plus an explicit user preparation/search action. Source and
+queries are sent only to the fixed OpenAI embedding endpoint; keys never reach the
+frontend or source context. The UI discloses this data transfer and possible charges.
+Provider redirects/proxy inheritance are disabled, responses are bounded/validated,
+and raw provider bodies are excluded from error messages. Tokenizer assets are
+cached during image build so read-only workers do not need a runtime asset download.
+
+All retrieval/preparation endpoints enforce repository ownership; POST queries
+require CSRF. SQL is parameterized, and all candidate channels are filtered to a
+completed authorized generation. Partial preparation is never searched. Native
+vectors and chunk links are tied to the same source snapshot by composite keys.
+The database connection is released before waiting for query embeddings.
+
+Preparation reserves tokens before external calls and retains uncertain reservations
+through crashes/retries. Per-user rate limits and a 25-second query deadline bound
+requests. They do not replace a global paid-deployment budget or prevent multiple-
+account abuse. Public registration/spend enforcement remains a deployment gate.
+Source text is rendered escaped and remains untrusted input for future RAG prompts.
+Retrieval scores are not confidence probabilities or authorization decisions.

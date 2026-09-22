@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
@@ -14,6 +15,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router
 from app.api.routes.indexes import router as index_router
 from app.api.routes.repositories import router as repository_router
+from app.api.routes.search import router as search_router
 from app.auth.passwords import hash_password
 from app.auth.throttle import AuthThrottle
 from app.auth.tokens import new_token
@@ -22,6 +24,7 @@ from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.rate_limits import RedisRateLimiter
 from app.database.session import DatabaseProbe, create_engine
+from app.embeddings.factory import create_provider
 
 logger = logging.getLogger("repopilot.http")
 
@@ -43,10 +46,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.rate_limiter = RedisRateLimiter(redis)
         app.state.auth_throttle = AuthThrottle(app.state.rate_limiter)
+        embedding_client = httpx.AsyncClient(trust_env=False, follow_redirects=False)
+        app.state.embedding_provider = create_provider(config, embedding_client)
         app.state.readiness_probe = DatabaseProbe(engine, config.database_timeout_seconds)
         try:
             yield
         finally:
+            await embedding_client.aclose()
             await redis.aclose()
             await engine.dispose()
 
@@ -57,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(repository_router)
     app.include_router(index_router)
+    app.include_router(search_router)
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: RequestResponseEndpoint) -> Response:

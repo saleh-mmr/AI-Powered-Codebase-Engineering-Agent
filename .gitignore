@@ -12,3 +12,10 @@ __pycache__/
 coverage/
 *.tsbuildinfo
 .DS_Store
+
+# Generated evaluation reports; review deliberately before committing a baseline.
+backend/evaluation/retrieval/reports/
+
+# Local tokenizer downloads are regenerated, not source files.
+**/data-gym-cache/
+**/tokenizer-cache/

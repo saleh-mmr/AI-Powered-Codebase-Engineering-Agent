@@ -56,6 +56,7 @@ class CodeChunk(Base):
     __tablename__ = "code_chunks"
     __table_args__ = (
         *source_constraints("chunk"),
+        UniqueConstraint("id", "index_id", name="uq_chunk_index"),
         ForeignKeyConstraint(
             ["index_id", "file_id", "symbol_ordinal"],
             ["code_symbols.index_id", "code_symbols.file_id", "code_symbols.ordinal"],

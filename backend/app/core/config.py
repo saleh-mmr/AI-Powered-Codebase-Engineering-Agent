@@ -25,6 +25,19 @@ class Settings(BaseSettings):
             raise ValueError("must be a redis:// or rediss:// connection URL")
         return value
 
+    embeddings_enabled: bool = False
+    openai_api_key: SecretStr | None = None
+    embedding_token_budget: int = Field(default=200000, ge=1000, le=2000000)
+    embedding_price_per_million: float = Field(default=0.02, ge=0, le=1000, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def embedding_configuration(self) -> "Settings":
+        if self.embeddings_enabled and (
+            self.openai_api_key is None or not self.openai_api_key.get_secret_value().strip()
+        ):
+            raise ValueError("enabled embeddings require APP_OPENAI_API_KEY")
+        return self
+
     environment: Literal["development", "production", "test"] = "development"
     frontend_origin: str = "http://localhost:3000"
     cookie_secure: bool = False

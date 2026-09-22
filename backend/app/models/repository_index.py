@@ -22,6 +22,7 @@ from app.database.base import Base
 class RepositoryIndex(Base):
     __tablename__ = "repository_indexes"
     __table_args__ = (
+        UniqueConstraint("id", "repository_id", name="uq_source_index_repository"),
         UniqueConstraint("id", "import_job_id", name="uq_repository_index_source"),
         ForeignKeyConstraint(
             ["import_job_id", "repository_id"],

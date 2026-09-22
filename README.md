@@ -1,19 +1,21 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 4, Python symbols and source chunks.**
+engineering agent. **Current scope: Milestone 5, hybrid retrieval and evaluation.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
-Static indexing and a React symbol/chunk inspector are now available; retrieval and AI answers come next.
+Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
+semantic retrieval are now available. Grounded answer generation comes next.
 
-**Upgrading from Milestone 3?** Follow [the Milestone 4 upgrade guide](docs/milestone-4.md).
+**Upgrading from Milestone 4?** Follow [the Milestone 5 upgrade guide](docs/milestone-5.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
 
 For the complete local stack: Docker Engine/Desktop with Docker Compose v2.
 For host development/checks: Python 3.12, uv 0.12.17, Node.js 24, pnpm 11.19.0.
-The lockfiles pin the resolved dependencies. No model or GitHub API key is needed.
+The lockfiles pin resolved dependencies. No model or GitHub API key is needed for
+keyword/symbol search. Semantic search is explicitly opt-in; see docs/milestone-5.md.
 
 ## Start the stack
 
@@ -50,7 +52,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0004_source_indexes (head)`.
+The migration should report `0005_hybrid_search (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -81,6 +83,7 @@ From the project root, install backend dependencies and run the checks:
 ```bash
 cd backend
 uv sync --frozen
+uv run python -m app.embeddings.tokens
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy app
@@ -167,6 +170,10 @@ there require rebuilding the image.
 | API_PROXY_TARGET | Vite development proxy target; never sent to browser code |
 | APP_REDIS_URL | Server-only Redis URL for queue and shared rate limits |
 | APP_IMPORT_DOWNLOAD_BYTES | Compressed archive cap; default 10485760 bytes |
+| APP_EMBEDDINGS_ENABLED | false by default; opt in to paid semantic search |
+| APP_OPENAI_API_KEY | Server-only key, required when embeddings are enabled |
+| APP_EMBEDDING_TOKEN_BUDGET | Per-preparation reservation budget, default 200000 |
+| APP_EMBEDDING_PRICE_PER_MILLION | Configurable USD estimate, default 0.02 |
 | APP_INDEX_TIMEOUT_SECONDS | Static indexing deadline, default 90 seconds (10–120) |
 | APP_IMPORT_TIMEOUT_SECONDS | Total import attempt timeout; default 90 seconds |
 | APP_ENVIRONMENT | development/test/production; production enforces HTTPS cookies |
@@ -199,7 +206,8 @@ Read [ADR 0001](docs/decisions/0001-modular-monolith.md) and the
 [security model](docs/security.md). Authentication now uses dedicated services, repositories, schemas, and dependencies.
 See [ADR 0002](docs/decisions/0002-session-authentication.md). Background imports are now implemented; see [ADR 0003](docs/decisions/0003-public-repository-import.md).
 See [ADR 0004](docs/decisions/0004-versioned-static-indexes.md) for the static indexing contracts.
-Model providers and retrieval remain future milestones.
+See [ADR 0005](docs/decisions/0005-hybrid-retrieval.md) and [evaluation methodology](docs/evaluation.md).
+Retrieval is inspectable independently of future answer generation.
 
 ## Migration notes
 
@@ -211,6 +219,8 @@ tables. Revision `0003_repository_imports` adds owned repositories, durable impo
 jobs, and snapshot files with composite foreign keys and dispatch indexes.
 Revision `0004_source_indexes` adds versioned indexes, symbols and chunks with
 source/symbol constraints. Downgrading 0004 removes indexes but keeps imports.
+Revision `0005_hybrid_search` adds search generations/documents, lexical GIN and
+pgvector storage. Downgrading 0005 removes search data but retains source indexes.
 Downgrading 0003 deletes import data; downgrading 0002 deletes accounts and sessions; do not use it as a routine
 troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
@@ -241,12 +251,12 @@ docker compose down
 
 Implemented: authentication, owned public repositories, bounded archive imports,
 Redis/Celery background processing, durable dispatch/recovery, basic source browsing,
-shared throttling, versioned Python indexing, symbol/chunk inspection, migrations,
+shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid retrieval, evaluation tooling, migrations,
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: hybrid retrieval and reproducible evaluation. Postponed: email
-verification/recovery, OAuth/private repositories, successful-import refresh, embeddings,
-retrieval, grounded chat, agents, patches, and sandbox execution.
+Next: local retrieval benchmark acceptance, then grounded Q&A. Postponed: email
+verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
+grounded chat, agents, patches, and sandbox execution.
 
-Suggested commit: `feat(indexing): add versioned Python symbols and source chunks`
+Suggested commit: `feat(retrieval): add hybrid search and reproducible evaluation`
