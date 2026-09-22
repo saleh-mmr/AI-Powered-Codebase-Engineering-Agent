@@ -14,7 +14,11 @@ class AppError(Exception):
 
 
 def error_response(request: Request, code: str, message: str, status: int) -> JSONResponse:
-    headers = {"Retry-After": "60"} if status == 429 else None
+    headers = (
+        {"Retry-After": "3600" if code == "import_rate_limited" else "60"}
+        if status == 429
+        else None
+    )
     return JSONResponse(
         status_code=status,
         headers=headers,

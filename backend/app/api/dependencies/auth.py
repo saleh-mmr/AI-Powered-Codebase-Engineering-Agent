@@ -73,7 +73,7 @@ def require_csrf(
     return identity
 
 
-def check_auth_throttle(request: Request, email: str) -> None:
+async def check_auth_throttle(request: Request, email: str) -> None:
     limiter = cast(AuthThrottle, request.app.state.auth_throttle)
     peer = request.client.host if request.client else "unknown"
-    limiter.check(email, peer)
+    await limiter.check(email, peer)

@@ -10,7 +10,9 @@ from sqlalchemy.pool import NullPool
 
 from app import models  # noqa: F401
 from app.api.dependencies.auth import get_db
+from app.auth.throttle import AuthThrottle
 from app.core.config import Settings
+from app.core.rate_limits import MemoryRateLimiter
 from app.database.base import Base
 from app.main import create_app
 
@@ -39,5 +41,7 @@ def auth_client(tmp_path: Path) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = database
     app.state.test_factory = factory
     with TestClient(app, base_url="http://localhost:3000") as client:
+        app.state.rate_limiter = MemoryRateLimiter()
+        app.state.auth_throttle = AuthThrottle(app.state.rate_limiter)
         yield client
     asyncio.run(engine.dispose())
