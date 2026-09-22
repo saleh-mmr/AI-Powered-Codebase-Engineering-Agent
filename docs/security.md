@@ -68,3 +68,21 @@ with database access. It is not a code-execution sandbox. Executing repository
 code will require an independent isolation boundary with no application secrets.
 
 See ADR 0002 and ADR 0003 for implementation choices and remaining tradeoffs.
+
+
+## Milestone 4 static indexing
+
+AST parsing occurs only in the existing resource-limited worker; imported source
+is never executed. The API only queues jobs and reads results. Parser node/scope,
+file, generation and deadline budgets are enforced. The Python parser can allocate
+before node-count checking, so worker memory limits remain necessary. This worker
+has trusted service credentials and must never become the repository-code executor.
+
+Every indexing route enforces session ownership, and every write enforces CSRF.
+Repository locks and the unique-current index serialize starts; shared Redis limits
+new attempts to five per minute per user. Conditional lease publication prevents
+cancelled/expired workers publishing data. Composite foreign keys enforce snapshot,
+parent-symbol and chunk-symbol consistency. Source is escaped React text. Logs omit
+source, signatures and docstrings. Failed replacement attempts retain the prior
+completed index. Imported repository text remains untrusted prompt input when RAG
+is added; indexing does not make it trusted instructions.

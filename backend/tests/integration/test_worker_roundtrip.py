@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import Settings
 from app.database.session import create_engine
+from app.indexing.pipeline import PIPELINE_VERSION
 from app.integrations.github.client import GitHubClient, RepositorySource
-from app.models import ImportJob, Repository, RepositoryFile, User
+from app.models import CodeChunk, ImportJob, Repository, RepositoryFile, RepositoryIndex, User
 
 
 @pytest.mark.integration
@@ -28,6 +29,7 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
         "Use a dedicated database ending in _test"
     )
     user_id, repo_id, job_id = uuid4(), uuid4(), uuid4()
+    index_id = uuid4()
     queue = "test-" + uuid4().hex
 
     async def resolve(self, owner, name):
@@ -91,6 +93,43 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
         finally:
             await engine.dispose()
 
+    async def queue_index():
+        engine = create_engine(settings)
+        try:
+            async with async_sessionmaker(engine)() as db:
+                db.add(
+                    RepositoryIndex(
+                        id=index_id,
+                        repository_id=repo_id,
+                        import_job_id=job_id,
+                        commit_sha="a" * 40,
+                        pipeline_version=PIPELINE_VERSION,
+                    )
+                )
+                await db.commit()
+        finally:
+            await engine.dispose()
+
+    async def verify_index():
+        engine = create_engine(settings)
+        try:
+            for _ in range(100):
+                async with async_sessionmaker(engine)() as db:
+                    state = await db.scalar(
+                        select(RepositoryIndex.status).where(RepositoryIndex.id == index_id)
+                    )
+                    if state == "completed":
+                        chunk = await db.scalar(
+                            select(CodeChunk).where(CodeChunk.index_id == index_id)
+                        )
+                        assert chunk.content == 'print("worker fixture")'
+                        return
+                    assert state != "failed"
+                await asyncio.sleep(0.1)
+            raise AssertionError("Index worker did not complete within 10 seconds")
+        finally:
+            await engine.dispose()
+
     async def cleanup():
         engine = create_engine(settings)
         try:
@@ -106,5 +145,8 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
         ):
             celery_app.send_task("repopilot.import_repository", args=[str(job_id)], queue=queue)
             asyncio.run(verify())
+            asyncio.run(queue_index())
+            celery_app.send_task("repopilot.index_repository", args=[str(index_id)], queue=queue)
+            asyncio.run(verify_index())
     finally:
         asyncio.run(cleanup())

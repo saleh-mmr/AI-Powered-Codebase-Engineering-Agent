@@ -12,6 +12,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router
+from app.api.routes.indexes import router as index_router
 from app.api.routes.repositories import router as repository_router
 from app.auth.passwords import hash_password
 from app.auth.throttle import AuthThrottle
@@ -55,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     app.include_router(auth_router)
     app.include_router(repository_router)
+    app.include_router(index_router)
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: RequestResponseEndpoint) -> Response:

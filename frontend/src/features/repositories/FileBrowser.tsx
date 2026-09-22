@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IndexInspector } from '../indexing/IndexInspector';
 import { ApiError } from '../../lib/api/http';
 import {
   listFiles,
@@ -9,10 +10,11 @@ import {
 } from './api';
 interface Props {
   repository: Repository;
+  csrf: string;
   onClose: () => void;
   onExpired: () => void;
 }
-export function FileBrowser({ repository, onClose, onExpired }: Props) {
+export function FileBrowser({ repository, csrf, onClose, onExpired }: Props) {
   const [files, setFiles] = useState<SourceFile[]>([]);
   const [offset, setOffset] = useState(0);
   const [next, setNext] = useState<number | null>(null);
@@ -143,6 +145,12 @@ export function FileBrowser({ repository, onClose, onExpired }: Props) {
           )}
         </div>
       </div>
+      <IndexInspector
+        repositoryId={repository.id}
+        fileId={selected}
+        csrf={csrf}
+        onExpired={onExpired}
+      />
     </section>
   );
 }

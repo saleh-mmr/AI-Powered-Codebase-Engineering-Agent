@@ -22,6 +22,8 @@ class JsonFormatter(logging.Formatter):
             "job_id",
             "attempt",
             "files_stored",
+            "symbol_count",
+            "chunk_count",
             "error_code",
         ):
             if hasattr(record, key):

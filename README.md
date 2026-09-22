@@ -1,12 +1,12 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 3, public repository import.**
+engineering agent. **Current scope: Milestone 4, Python symbols and source chunks.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
-AST indexing and AI answers come next.
+Static indexing and a React symbol/chunk inspector are now available; retrieval and AI answers come next.
 
-**Upgrading from Milestone 2?** Follow [the Milestone 3 upgrade guide](docs/milestone-3.md).
+**Upgrading from Milestone 3?** Follow [the Milestone 4 upgrade guide](docs/milestone-4.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -50,7 +50,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0003_repository_imports (head)`.
+The migration should report `0004_source_indexes (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -167,6 +167,7 @@ there require rebuilding the image.
 | API_PROXY_TARGET | Vite development proxy target; never sent to browser code |
 | APP_REDIS_URL | Server-only Redis URL for queue and shared rate limits |
 | APP_IMPORT_DOWNLOAD_BYTES | Compressed archive cap; default 10485760 bytes |
+| APP_INDEX_TIMEOUT_SECONDS | Static indexing deadline, default 90 seconds (10–120) |
 | APP_IMPORT_TIMEOUT_SECONDS | Total import attempt timeout; default 90 seconds |
 | APP_ENVIRONMENT | development/test/production; production enforces HTTPS cookies |
 | APP_FRONTEND_ORIGIN | Exact browser origin; default http://localhost:3000 |
@@ -197,6 +198,7 @@ Compose injects it, while host commands explicitly load it.
 Read [ADR 0001](docs/decisions/0001-modular-monolith.md) and the
 [security model](docs/security.md). Authentication now uses dedicated services, repositories, schemas, and dependencies.
 See [ADR 0002](docs/decisions/0002-session-authentication.md). Background imports are now implemented; see [ADR 0003](docs/decisions/0003-public-repository-import.md).
+See [ADR 0004](docs/decisions/0004-versioned-static-indexes.md) for the static indexing contracts.
 Model providers and retrieval remain future milestones.
 
 ## Migration notes
@@ -207,6 +209,8 @@ a unique email constraint, a cascading user foreign key, and session indexes.
 The migration account must be allowed to create the extension and application
 tables. Revision `0003_repository_imports` adds owned repositories, durable import
 jobs, and snapshot files with composite foreign keys and dispatch indexes.
+Revision `0004_source_indexes` adds versioned indexes, symbols and chunks with
+source/symbol constraints. Downgrading 0004 removes indexes but keeps imports.
 Downgrading 0003 deletes import data; downgrading 0002 deletes accounts and sessions; do not use it as a routine
 troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
@@ -237,11 +241,12 @@ docker compose down
 
 Implemented: authentication, owned public repositories, bounded archive imports,
 Redis/Celery background processing, durable dispatch/recovery, basic source browsing,
-shared throttling, migrations, Compose, tests, and CI definition. See `docs/validation.md` for actual
+shared throttling, versioned Python indexing, symbol/chunk inspection, migrations,
+Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: Python AST indexing, symbols, and chunk inspection. Postponed: email
-verification/recovery, OAuth/private repositories, refresh/reindex, embeddings,
+Next: hybrid retrieval and reproducible evaluation. Postponed: email
+verification/recovery, OAuth/private repositories, successful-import refresh, embeddings,
 retrieval, grounded chat, agents, patches, and sandbox execution.
 
-Suggested commit: `feat(repositories): add owned public imports and background jobs`
+Suggested commit: `feat(indexing): add versioned Python symbols and source chunks`
