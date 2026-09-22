@@ -21,6 +21,23 @@ a full-stack architecture designed for retrieval-augmented code intelligence.
 - Unit and integration testing
 - Automated CI quality checks
 - Fully containerized local environment
+
+
+## Engineering Quality
+
+RepoPilot is built as a production-oriented system rather than a notebook
+prototype.
+
+- Strict static typing with mypy
+- Ruff linting and formatting
+- Unit and API testing with pytest
+- PostgreSQL + Redis/Celery integration testing
+- Versioned Alembic migrations with schema-drift checks
+- Frontend component testing and production builds
+- Dockerized backend and frontend
+- Automated GitHub Actions CI
+- Health/readiness checks and dependency-failure recovery
+
   
 ## Requirements
 
