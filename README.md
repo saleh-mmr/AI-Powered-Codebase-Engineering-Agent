@@ -1,15 +1,44 @@
 # RepoPilot AI
 
-A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 5, hybrid retrieval and evaluation.**
-React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
-job dispatcher now support authenticated imports, progress, and basic source browsing.
-Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
-semantic retrieval are now available. Grounded answer generation comes next.
+RepoPilot AI is a production-oriented platform for indexing, understanding,
+and exploring software repositories, built as the foundation for an
+AI-powered software engineering agent.
 
-**Upgrading from Milestone 4?** Follow [the Milestone 5 upgrade guide](docs/milestone-5.md).
-It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
+It combines asynchronous repository ingestion, versioned source indexing,
+background job processing, authentication, and structured code analysis in
+a full-stack architecture designed for retrieval-augmented code intelligence.
 
+## Key Features
+
+- Repository ingestion and versioned source indexing
+- Python symbol and source-chunk extraction
+- Asynchronous processing with Celery and Redis
+- PostgreSQL + pgvector persistence
+- Authenticated multi-user workspace
+- Durable job dispatch and recovery
+- React/TypeScript repository explorer
+- Database migrations with Alembic
+- Unit and integration testing
+- Automated CI quality checks
+- Fully containerized local environment
+
+
+## Engineering Quality
+
+RepoPilot is built as a production-oriented system rather than a notebook
+prototype.
+
+- Strict static typing with mypy
+- Ruff linting and formatting
+- Unit and API testing with pytest
+- PostgreSQL + Redis/Celery integration testing
+- Versioned Alembic migrations with schema-drift checks
+- Frontend component testing and production builds
+- Dockerized backend and frontend
+- Automated GitHub Actions CI
+- Health/readiness checks and dependency-failure recovery
+
+  
 ## Requirements
 
 For the complete local stack: Docker Engine/Desktop with Docker Compose v2.
@@ -255,8 +284,6 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: local retrieval benchmark acceptance, then grounded Q&A. Postponed: email
-verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
-grounded chat, agents, patches, and sandbox execution.
-
-Suggested commit: `feat(retrieval): add hybrid search and reproducible evaluation`
+Next: hybrid retrieval and reproducible evaluation. Postponed: email
+verification/recovery, OAuth/private repositories, successful-import refresh, embeddings,
+retrieval, grounded chat, agents, patches, and sandbox execution.
