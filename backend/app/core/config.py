@@ -11,6 +11,19 @@ class Settings(BaseSettings):
     database_url: SecretStr
     database_timeout_seconds: float = Field(default=3.0, ge=0.1, le=30)
 
+    redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
+    import_download_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    import_timeout_seconds: int = Field(default=90, ge=10, le=120)
+    dispatcher_interval_seconds: int = Field(default=5, ge=1, le=30)
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, value: SecretStr) -> SecretStr:
+        parsed = urlsplit(value.get_secret_value())
+        if parsed.scheme not in {"redis", "rediss"} or not parsed.hostname:
+            raise ValueError("must be a redis:// or rediss:// connection URL")
+        return value
+
     environment: Literal["development", "production", "test"] = "development"
     frontend_origin: str = "http://localhost:3000"
     cookie_secure: bool = False

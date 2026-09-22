@@ -63,7 +63,7 @@ async def register(
     service: Annotated[AuthService, Depends(get_service)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthResponse:
-    check_auth_throttle(request, str(data.email))
+    await check_auth_throttle(request, str(data.email))
     identity = await service.register(data, request.cookies.get(SESSION_COOKIE))
     set_session_cookie(response, identity, settings)
     return auth_response(identity)
@@ -77,7 +77,7 @@ async def login(
     service: Annotated[AuthService, Depends(get_service)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthResponse:
-    check_auth_throttle(request, str(data.email))
+    await check_auth_throttle(request, str(data.email))
     identity = await service.login(data, request.cookies.get(SESSION_COOKIE))
     set_session_cookie(response, identity, settings)
     return auth_response(identity)
