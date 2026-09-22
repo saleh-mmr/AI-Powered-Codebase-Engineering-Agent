@@ -18,6 +18,10 @@ services:
     build: ./backend
     environment: &backend_environment
       APP_DATABASE_URL: ${APP_DATABASE_URL:?Set APP_DATABASE_URL in .env}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-development}
+      APP_FRONTEND_ORIGIN: ${APP_FRONTEND_ORIGIN:-http://localhost:3000}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      APP_SESSION_LIFETIME_HOURS: ${APP_SESSION_LIFETIME_HOURS:-24}
       APP_DATABASE_TIMEOUT_SECONDS: ${APP_DATABASE_TIMEOUT_SECONDS:-3}
     command: ["alembic", "upgrade", "head"]
     depends_on:

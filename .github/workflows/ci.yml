@@ -34,6 +34,7 @@ jobs:
       - run: uv run pytest -m 'not integration'
       - run: uv run alembic upgrade head
       - run: uv run alembic current
+      - run: uv run alembic check
       - run: uv run pytest -m integration
         env:
           RUN_DB_TESTS: '1'

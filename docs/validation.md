@@ -1,45 +1,43 @@
-# Milestone 1 validation
+# Validation record
 
-Status: implemented; local non-Docker checks passed; full acceptance remains pending.
+## Milestone 1
 
-Verified in the authoring environment:
+The user reported completion after receiving the Docker/database validation
+procedure. Those local results were not independently rerun in the authoring
+environment. The original baseline had 7 backend and 4 frontend tests passing,
+with live API/proxy smoke checks and a successful frontend build.
 
-- Backend Ruff lint and formatting pass.
-- Backend strict mypy passes for 12 application modules.
-- Backend pytest: 7 passed, 1 real-database test intentionally skipped.
-- Frontend TypeScript, ESLint, and Prettier pass.
-- Frontend Vitest: 4 tests pass (success, 503/retry, malformed response, network failure).
-- Vite production build succeeds.
-- FastAPI starts with explicit settings and shuts down cleanly.
-- Real HTTP liveness returns 200 without a database.
-- Real HTTP readiness returns a redacted 503 when the database cannot be reached.
-- Running Vite serves the HTML entry point and proxies `/api/health/ready` to the
-  real FastAPI service; the database-unavailable response traverses the proxy.
-- Alembic offline SQL generation succeeds and includes extension creation and
-  version tracking.
-- Compose YAML parses; this is not equivalent to Docker Compose runtime validation.
+## Milestone 2
 
-Not verified here:
+Implemented; PostgreSQL/browser acceptance remains pending on the user's machine
+or in CI. Do not treat authored CI configuration as an executed CI result.
 
-- Docker images build and all Compose services start.
-- Migration applies successfully to a real PostgreSQL/pgvector instance.
-- Real readiness succeeds and recovers after a database restart.
-- Browser-rendered desktop/mobile layout and accessibility behavior. Chromium was
-  unavailable and its attempted download returned an invalid archive. DOM component
-  tests passed, but they do not replace a real browser review.
-- GitHub Actions execution. The workflow exists; it has not run on GitHub.
+Verified here:
 
-Run the README's Docker setup, readiness, failure/recovery, and database-integration
-commands before calling Milestone 1 complete. Inspect the page at desktop width and
-at a narrow mobile width, keyboard-tab to Check connection, and confirm visible focus.
+- Backend Ruff lint/formatting and strict mypy pass.
+- 25 backend tests pass; two PostgreSQL integration tests skip intentionally.
+- API auth tests exercise real password hashes, ORM storage, service logic, and
+  cookie handling against disposable SQLite databases; no mock auth service.
+- Coverage includes registration, duplicate normalized email, cookie flags,
+  session rotation, old-cookie replay, expiry, missing/invalid cookie, generic
+  login errors, cross-user ID injection, CSRF isolation, origin/custom-header
+  checks, validation redaction, JSON-only requests, and login throttling.
+- Frontend TypeScript, ESLint, Prettier, nine component tests, and production build pass.
+- Frontend tests use controlled HTTP responses; they are not browser E2E tests.
+- Alembic offline upgrade SQL generation and revision chain are checked.
+- Upgrade patch is checked against the original Milestone 1 source snapshot.
 
-Known warnings:
+Pending:
 
-- The resolved Starlette test client warns that its httpx integration is deprecated
-  in favor of httpx2. The existing integration still passes. Evaluate migration
-  alongside upstream test-client updates; do not suppress the warning globally.
-- Starlette also uses a deprecated AnyIO BlockingPortal alias. This is upstream
-  compatibility debt, not an application failure; track a compatible update.
+- Applying revision 0002 to PostgreSQL and checking ORM/migration drift.
+- Running both real PostgreSQL integration tests.
+- Building and starting the updated Docker images.
+- Browser-based registration/login/refresh/logout, desktop/mobile visual review,
+  and keyboard checks. The authoring environment lacks a working Chromium runtime.
+- Executing GitHub Actions on the user's repository.
 
-No paid model APIs are used. No application secrets or imported repositories exist
-in this milestone. This record distinguishes test doubles from live dependencies.
+Use docs/milestone-2.md for exact upgrade and acceptance commands.
+
+Known upstream warnings: Starlette's test client deprecates its current httpx
+integration and uses a deprecated AnyIO BlockingPortal alias. Tests pass; neither
+warning is suppressed. Track compatible upstream updates. No paid API calls occur.
