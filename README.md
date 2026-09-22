@@ -1,14 +1,27 @@
 # RepoPilot AI
 
-A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 4, Python symbols and source chunks.**
-React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
-job dispatcher now support authenticated imports, progress, and basic source browsing.
-Static indexing and a React symbol/chunk inspector are now available; retrieval and AI answers come next.
+RepoPilot AI is a production-oriented platform for indexing, understanding,
+and exploring software repositories, built as the foundation for an
+AI-powered software engineering agent.
 
-**Upgrading from Milestone 3?** Follow [the Milestone 4 upgrade guide](docs/milestone-4.md).
-It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
+It combines asynchronous repository ingestion, versioned source indexing,
+background job processing, authentication, and structured code analysis in
+a full-stack architecture designed for retrieval-augmented code intelligence.
 
+## Key Features
+
+- Repository ingestion and versioned source indexing
+- Python symbol and source-chunk extraction
+- Asynchronous processing with Celery and Redis
+- PostgreSQL + pgvector persistence
+- Authenticated multi-user workspace
+- Durable job dispatch and recovery
+- React/TypeScript repository explorer
+- Database migrations with Alembic
+- Unit and integration testing
+- Automated CI quality checks
+- Fully containerized local environment
+  
 ## Requirements
 
 For the complete local stack: Docker Engine/Desktop with Docker Compose v2.
@@ -248,5 +261,3 @@ verification results and remaining gates.
 Next: hybrid retrieval and reproducible evaluation. Postponed: email
 verification/recovery, OAuth/private repositories, successful-import refresh, embeddings,
 retrieval, grounded chat, agents, patches, and sandbox execution.
-
-Suggested commit: `feat(indexing): add versioned Python symbols and source chunks`
