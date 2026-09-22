@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { RepositorySearch } from '../search/RepositorySearch';
 import { IndexInspector } from '../indexing/IndexInspector';
 import { ApiError } from '../../lib/api/http';
 import {
@@ -148,6 +149,11 @@ export function FileBrowser({ repository, csrf, onClose, onExpired }: Props) {
       <IndexInspector
         repositoryId={repository.id}
         fileId={selected}
+        csrf={csrf}
+        onExpired={onExpired}
+      />
+      <RepositorySearch
+        repositoryId={repository.id}
         csrf={csrf}
         onExpired={onExpired}
       />

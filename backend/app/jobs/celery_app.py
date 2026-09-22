@@ -85,3 +85,31 @@ def index_repository(job_id: str) -> None:
         logging.getLogger("repopilot.worker").error(
             "index_task_failed", extra={"error_type": type(exc).__name__}
         )
+
+
+async def execute_preparation(job_id: UUID) -> None:
+    from app.embeddings.factory import create_provider
+    from app.jobs.prepare_search import run_preparation
+
+    engine = create_engine(settings)
+    try:
+        async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+            await run_preparation(
+                async_sessionmaker(engine, expire_on_commit=False),
+                job_id,
+                create_provider(settings, client),
+                settings.index_timeout_seconds,
+            )
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="repopilot.prepare_search")  # type: ignore[untyped-decorator]
+def prepare_search(job_id: str) -> None:
+    configure_logging()
+    try:
+        asyncio.run(execute_preparation(UUID(job_id)))
+    except Exception as exc:
+        logging.getLogger("repopilot.worker").error(
+            "search_task_failed", extra={"error_type": type(exc).__name__}
+        )

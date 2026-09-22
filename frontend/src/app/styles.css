@@ -518,3 +518,21 @@ footer > span {
 .indexed-file {
   min-width: 0;
 }
+
+.search-form {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.search-form input,
+#search-mode {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #b7c6ce;
+  border-radius: 0.5rem;
+  background: white;
+  color: #19323f;
+}
+.search-form button {
+  justify-self: start;
+}

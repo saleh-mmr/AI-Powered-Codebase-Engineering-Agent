@@ -46,6 +46,11 @@ jobs:
         env:
           RUN_DB_TESTS: '1'
           RUN_QUEUE_TESTS: '1'
+      - run: uv run python -m app.evaluation.retrieval --output evaluation/retrieval/reports/keyword.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyword-retrieval-benchmark
+          path: backend/evaluation/retrieval/reports/keyword.json
       - run: docker build -t repopilot-backend:ci .
   frontend:
     runs-on: ubuntu-latest

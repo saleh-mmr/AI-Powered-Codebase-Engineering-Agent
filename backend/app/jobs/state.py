@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.indexing.errors import LeaseLost
-from app.models import ImportJob, Repository, RepositoryIndex
+from app.models import ImportJob, Repository, RepositoryIndex, SearchIndex
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class Claim:
 async def claim_job(
     factory: async_sessionmaker[AsyncSession],
     job_id: UUID,
-    model: type[ImportJob] | type[RepositoryIndex] = ImportJob,
+    model: type[ImportJob] | type[RepositoryIndex] | type[SearchIndex] = ImportJob,
 ) -> Claim | None:
     now = datetime.now(UTC)
     lease = uuid4()
@@ -68,7 +68,7 @@ async def claim_job(
 
 
 def lease_condition(
-    claim: Claim, model: type[ImportJob] | type[RepositoryIndex] = ImportJob
+    claim: Claim, model: type[ImportJob] | type[RepositoryIndex] | type[SearchIndex] = ImportJob
 ) -> ColumnElement[bool]:
     return and_(
         model.id == claim.job_id,
@@ -83,7 +83,7 @@ async def report_stage(
     factory: async_sessionmaker[AsyncSession],
     claim: Claim,
     stage: str,
-    model: type[ImportJob] | type[RepositoryIndex] = ImportJob,
+    model: type[ImportJob] | type[RepositoryIndex] | type[SearchIndex] = ImportJob,
 ) -> None:
     async with factory() as db:
         found = await db.scalar(
