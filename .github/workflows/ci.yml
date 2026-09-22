@@ -6,6 +6,12 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 3s
+          --health-timeout 3s --health-retries 10
       postgres:
         image: pgvector/pgvector:pg17
         env:
@@ -17,6 +23,7 @@ jobs:
           --health-cmd "pg_isready -U repopilot -d repopilot_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      APP_REDIS_URL: redis://127.0.0.1:6379/0
       APP_DATABASE_URL: postgresql+asyncpg://repopilot:ci_password@127.0.0.1:5432/repopilot_test
     defaults:
       run:
@@ -38,6 +45,7 @@ jobs:
       - run: uv run pytest -m integration
         env:
           RUN_DB_TESTS: '1'
+          RUN_QUEUE_TESTS: '1'
       - run: docker build -t repopilot-backend:ci .
   frontend:
     runs-on: ubuntu-latest
