@@ -6,10 +6,16 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router
+from app.auth.passwords import hash_password
+from app.auth.throttle import AuthThrottle
+from app.auth.tokens import new_token
 from app.core.config import Settings
+from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.database.session import DatabaseProbe, create_engine
 
@@ -23,6 +29,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_engine(config)
+        app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        app.state.dummy_password_hash = await hash_password(new_token())
+        app.state.auth_throttle = AuthThrottle()
         app.state.readiness_probe = DatabaseProbe(engine, config.database_timeout_seconds)
         try:
             yield
@@ -30,7 +39,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await engine.dispose()
 
     app = FastAPI(title="RepoPilot AI", version="0.1.0", lifespan=lifespan)
+    app.state.settings = config
+    install_error_handlers(app)
     app.include_router(router)
+    app.include_router(auth_router)
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: RequestResponseEndpoint) -> Response:

@@ -1,9 +1,12 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 1, runnable foundation.** React +
-TypeScript + Vite communicates with FastAPI and checks PostgreSQL + pgvector.
-There is no authentication, repository import, or AI functionality yet.
+engineering agent. **Current scope: Milestone 2, session authentication.** React + TypeScript + Vite
+communicates with FastAPI and PostgreSQL/pgvector. Registration, login, logout,
+CSRF protection, and a protected workspace are implemented. Repository import and
+AI functionality come next.
+
+**Upgrading from Milestone 1?** Follow [the Milestone 2 upgrade and validation guide](docs/milestone-2.md).
 
 ## Requirements
 
@@ -33,8 +36,8 @@ docker compose ps -a
 Expected: PostgreSQL and backend healthy, frontend running, and `migrate` exited
 with code 0. The one-shot migration runs before the backend starts.
 
-Open http://localhost:3000. The status card should display **Connected** and
-**All checks passed**. API docs: http://localhost:8000/docs.
+Open http://localhost:3000. Create an account with a 15–128 character passphrase. In the protected workspace,
+the status card should display **Connected** and **All checks passed**. API docs: http://localhost:8000/docs.
 
 From the project root:
 
@@ -46,7 +49,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0001_enable_pgvector (head)`.
+The migration should report `0002_users_and_sessions (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -158,6 +161,10 @@ there require rebuilding the image.
 | APP_DATABASE_URL | Required server-only `postgresql+asyncpg` connection URL |
 | APP_DATABASE_TIMEOUT_SECONDS | Readiness deadline, default 3 seconds |
 | API_PROXY_TARGET | Vite development proxy target; never sent to browser code |
+| APP_ENVIRONMENT | development/test/production; production enforces HTTPS cookies |
+| APP_FRONTEND_ORIGIN | Exact browser origin; default http://localhost:3000 |
+| APP_COOKIE_SECURE | false for local HTTP; true for HTTPS deployment |
+| APP_SESSION_LIFETIME_HOURS | Absolute session lifetime, default 24 hours |
 | RUN_DB_TESTS | Explicit opt-in to tests requiring a real migrated database |
 
 Settings are centralized in `backend/app/core/config.py`. Missing or malformed
@@ -181,16 +188,18 @@ Compose injects it, while host commands explicitly load it.
 - `.github/workflows/ci.yml`: lint, types, tests, real PostgreSQL integration, images.
 
 Read [ADR 0001](docs/decisions/0001-modular-monolith.md) and the
-[security model](docs/security.md). Backend business services, authentication,
-workers, provider adapters, and retrieval are added only in their milestones.
+[security model](docs/security.md). Authentication now uses dedicated services, repositories, schemas, and dependencies.
+See [ADR 0002](docs/decisions/0002-session-authentication.md). Workers, model providers,
+and retrieval remain future milestones.
 
 ## Migration notes
 
-Revision `0001_enable_pgvector` enables the vector extension. It adds no application
-ORM models, indexes, foreign keys, or business tables. Alembic creates its version
-tracking table. The migration account must be allowed to create the extension.
-The downgrade retains the extension to avoid deleting a shared database capability.
-Future schema changes must add ORM models and migrations together.
+Revision `0001_enable_pgvector` enables the vector extension and retains it on
+downgrade. Revision `0002_users_and_sessions` adds users and hashed sessions,
+a unique email constraint, a cascading user foreign key, and session indexes.
+The migration account must be allowed to create the extension and application
+tables. Downgrading 0002 deletes accounts and sessions; do not use it as a routine
+troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
 ## Common errors
 
@@ -217,11 +226,13 @@ docker compose down
 
 ## Progress
 
-Implemented: React/Vite foundation, FastAPI health API, configuration, migration,
-Compose, focused tests, and CI definition. See `docs/validation.md` for actual
+Implemented: React/Vite foundation, FastAPI health API, user registration,
+password hashing, server-side sessions, CSRF, protected UI, migrations, Compose,
+focused tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: authentication and ownership. Postponed: imports, workers, indexing,
-retrieval, grounded chat, agents, patches, sandbox execution, and evaluation datasets.
+Next: public repository import with ownership checks and Redis/Celery. Postponed:
+email verification/recovery, OAuth, distributed throttling, indexing, retrieval,
+grounded chat, agents, patches, sandbox execution, and evaluation datasets.
 
-Suggested commit: `chore(foundation): bootstrap React and FastAPI workspace`
+Suggested commit: `feat(auth): add session authentication and protected workspace`

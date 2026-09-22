@@ -1,4 +1,4 @@
-import { SystemStatus } from '../features/system/SystemStatus';
+import { AuthWorkspace } from '../features/auth/AuthWorkspace';
 
 export function App() {
   return (
@@ -10,7 +10,7 @@ export function App() {
           </span>
           RepoPilot <span className="brand-ai">AI</span>
         </a>
-        <span className="milestone">01 / Foundation</span>
+        <span className="milestone">02 / Your workspace</span>
       </header>
       <main>
         <div className="intro">
@@ -22,45 +22,13 @@ export function App() {
           </h1>
           <p>
             A workspace for grounded repository exploration. We’re starting with
-            a dependable foundation for everything that comes next.
+            a secure workspace for everything that comes next.
           </p>
         </div>
-        <div className="grid">
-          <SystemStatus />
-          <section className="next-card" aria-labelledby="next-title">
-            <span className="eyebrow">THE ROAD AHEAD</span>
-            <h2 id="next-title">From source to understanding.</h2>
-            <ol>
-              <li>
-                <span>01</span>
-                <div>
-                  <strong>Foundation</strong>
-                  <p>Application, API, and database readiness.</p>
-                </div>
-              </li>
-              <li>
-                <span>02</span>
-                <div>
-                  <strong>Your workspace</strong>
-                  <p>Secure sign-in and repository ownership.</p>
-                </div>
-              </li>
-              <li>
-                <span>03</span>
-                <div>
-                  <strong>Repository exploration</strong>
-                  <p>Import, index, and ask questions with sources.</p>
-                </div>
-              </li>
-            </ol>
-            <p className="note">
-              Repository import and AI chat arrive in later milestones.
-            </p>
-          </section>
-        </div>
+        <AuthWorkspace />
       </main>
       <footer>
-        RepoPilot AI <span>Milestone 1 · React / FastAPI / PostgreSQL</span>
+        RepoPilot AI <span>Milestone 2 · React / FastAPI / PostgreSQL</span>
       </footer>
     </div>
   );

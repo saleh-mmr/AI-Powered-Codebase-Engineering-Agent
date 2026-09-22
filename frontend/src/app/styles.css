@@ -271,3 +271,74 @@ footer > span {
     font-size: 10px;
   }
 }
+
+.auth-card fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.auth-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 18px 0 0;
+}
+.auth-card input {
+  width: 100%;
+  display: block;
+  padding: 11px 12px;
+  margin-top: 7px;
+  font: inherit;
+  color: inherit;
+  border: 1px solid #bbc9ce;
+  border-radius: 7px;
+  background: #fff;
+}
+.auth-card input:focus-visible {
+  outline: 3px solid #9dc4c0;
+  outline-offset: 2px;
+}
+.auth-card input:disabled {
+  background: #f1f4f4;
+}
+.auth-card button[type='submit'] {
+  width: 100%;
+  margin-top: 24px;
+}
+.text-button {
+  background: transparent;
+  color: #1f6262;
+  display: block;
+  margin: 8px auto 0;
+}
+.text-button:hover {
+  background: #edf4f3;
+}
+.field-help {
+  font-size: 11px;
+  color: #526970;
+}
+.form-error {
+  color: #a13525 !important;
+  font-size: 13px;
+}
+.empty-state {
+  margin: 25px 0;
+  border: 1px dashed #bacccc;
+  padding: 22px;
+  border-radius: 10px;
+}
+.empty-state strong {
+  font-size: 14px;
+}
+.empty-state p {
+  font-size: 13px;
+  color: #667784;
+}
+.session-notice {
+  padding: 35px;
+  background: white;
+  border-radius: 12px;
+  color: #526970;
+}
