@@ -342,3 +342,135 @@ footer > span {
   border-radius: 12px;
   color: #526970;
 }
+
+.repositories-section {
+  margin-top: 32px;
+  padding: 32px;
+  background: white;
+  border: 1px solid #dce3e8;
+  border-radius: 17px;
+}
+.repositories-section h2 {
+  margin: 8px 0 18px;
+}
+.repository-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.import-controls {
+  display: flex;
+  gap: 12px;
+}
+.import-controls input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 12px;
+  border: 1px solid #bbc9ce;
+  border-radius: 8px;
+}
+.import-controls input:focus-visible {
+  outline: 3px solid #9dc4c0;
+  outline-offset: 2px;
+}
+.repository-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 16px;
+  margin-top: 25px;
+}
+.repository-card {
+  padding: 21px;
+  border: 1px solid #dce3e8;
+  border-radius: 12px;
+}
+.repository-card h3 {
+  font-size: 14px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.repository-progress,
+.commit-label {
+  font-size: 12px;
+  color: #637780;
+}
+.repository-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.repository-actions .text-button {
+  margin: 0;
+}
+.source-browser {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #dce3e8;
+}
+.source-browser h3 {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.source-browser .field-help {
+  overflow-wrap: anywhere;
+}
+.source-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 3fr);
+  border: 1px solid #dce3e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.source-grid nav {
+  max-height: 550px;
+  overflow: auto;
+  background: #f2f6f6;
+  padding: 10px;
+}
+.file-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #284b51;
+  overflow-wrap: anywhere;
+  border-radius: 3px;
+  padding: 8px;
+}
+.file-link:hover,
+.file-link.selected {
+  background: #dceae7;
+}
+.source-content {
+  min-width: 0;
+  padding: 18px;
+}
+.source-content h4 {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.source-content pre {
+  overflow: auto;
+  max-height: 500px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #233544;
+  white-space: pre;
+}
+@media (max-width: 740px) {
+  .repositories-section {
+    padding: 22px;
+  }
+  .import-controls {
+    flex-direction: column;
+  }
+  .source-grid {
+    grid-template-columns: 1fr;
+  }
+  .source-grid nav {
+    max-height: 170px;
+  }
+}

@@ -1,14 +1,8 @@
 import type { AuthSession, Credentials, Registration } from './types';
 
-export class AuthError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
+import { ApiError as AuthError, requestJSON } from '../../lib/api/http';
+export { ApiError as AuthError } from '../../lib/api/http';
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -37,36 +31,11 @@ function parseSession(value: unknown): AuthSession {
     expires_at: value.expires_at,
   };
 }
-async function request(
-  path: string,
-  options: RequestInit = {},
-): Promise<unknown> {
-  const response = await fetch(`/api/auth/${path}`, {
-    ...options,
-    credentials: 'same-origin',
-    cache: 'no-store',
-    signal: options.signal ?? AbortSignal.timeout(12000),
-    headers: { Accept: 'application/json', ...options.headers },
-  });
-  if (!response.ok) {
-    let message = 'Unable to complete the request. Please try again.';
-    const data: unknown = await response.json().catch(() => null);
-    if (
-      record(data) &&
-      record(data.error) &&
-      typeof data.error.message === 'string'
-    ) {
-      message = data.error.message;
-    }
-    throw new AuthError(response.status, message);
-  }
-  return response.status === 204 ? null : response.json();
-}
 export async function getSession(
   signal?: AbortSignal,
 ): Promise<AuthSession | null> {
   try {
-    return parseSession(await request('me', { signal }));
+    return parseSession(await requestJSON('/auth/me', { signal }));
   } catch (error) {
     if (error instanceof AuthError && error.status === 401) return null;
     throw error;
@@ -77,7 +46,7 @@ export async function authenticate(
   data: Credentials | Registration,
 ): Promise<AuthSession> {
   return parseSession(
-    await request(mode, {
+    await requestJSON(`/auth/${mode}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,7 +57,7 @@ export async function authenticate(
   );
 }
 export async function logout(csrf: string): Promise<void> {
-  await request('logout', {
+  await requestJSON('/auth/logout', {
     method: 'POST',
     body: '{}',
     headers: {

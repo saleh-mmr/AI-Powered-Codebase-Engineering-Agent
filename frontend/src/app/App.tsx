@@ -10,7 +10,7 @@ export function App() {
           </span>
           RepoPilot <span className="brand-ai">AI</span>
         </a>
-        <span className="milestone">02 / Your workspace</span>
+        <span className="milestone">03 / Repository import</span>
       </header>
       <main>
         <div className="intro">
@@ -28,7 +28,7 @@ export function App() {
         <AuthWorkspace />
       </main>
       <footer>
-        RepoPilot AI <span>Milestone 2 · React / FastAPI / PostgreSQL</span>
+        RepoPilot AI <span>Milestone 3 · React / FastAPI / PostgreSQL</span>
       </footer>
     </div>
   );

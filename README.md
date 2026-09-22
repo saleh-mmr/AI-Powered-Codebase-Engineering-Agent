@@ -1,12 +1,13 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 2, session authentication.** React + TypeScript + Vite
-communicates with FastAPI and PostgreSQL/pgvector. Registration, login, logout,
-CSRF protection, and a protected workspace are implemented. Repository import and
-AI functionality come next.
+engineering agent. **Current scope: Milestone 3, public repository import.**
+React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
+job dispatcher now support authenticated imports, progress, and basic source browsing.
+AST indexing and AI answers come next.
 
-**Upgrading from Milestone 1?** Follow [the Milestone 2 upgrade and validation guide](docs/milestone-2.md).
+**Upgrading from Milestone 2?** Follow [the Milestone 3 upgrade guide](docs/milestone-3.md).
+It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
 
@@ -33,7 +34,7 @@ docker compose up --build -d
 docker compose ps -a
 ```
 
-Expected: PostgreSQL and backend healthy, frontend running, and `migrate` exited
+Expected: PostgreSQL, Redis, and backend healthy; frontend, worker, and dispatcher running, and `migrate` exited
 with code 0. The one-shot migration runs before the backend starts.
 
 Open http://localhost:3000. Create an account with a 15–128 character passphrase. In the protected workspace,
@@ -49,7 +50,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0002_users_and_sessions (head)`.
+The migration should report `0003_repository_imports (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -113,11 +114,13 @@ set -a
 . ./.env
 set +a
 export APP_DATABASE_URL="${APP_DATABASE_URL/@postgres:/@127.0.0.1:}"
+export APP_REDIS_URL=redis://127.0.0.1:6379/0
 cd backend
 RUN_DB_TESTS=1 uv run pytest -m integration
 ```
 
-The URL replacement above requires Bash. Expected: the real readiness integration
+The URL replacement above requires Bash. For the full isolated integration suite,
+including Celery transport, follow docs/milestone-3.md instead of using application data. Expected: the real readiness integration
 test passes. Without `RUN_DB_TESTS=1`, it is intentionally skipped. Never run
 schema-changing integration tests against a production database.
 
@@ -127,11 +130,12 @@ Use Compose for PostgreSQL only and run both application processes locally.
 From the project root in Bash:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres redis worker dispatcher
 set -a
 . ./.env
 set +a
 export APP_DATABASE_URL="${APP_DATABASE_URL/@postgres:/@127.0.0.1:}"
+export APP_REDIS_URL=redis://127.0.0.1:6379/0
 cd backend
 uv sync --frozen
 uv run alembic upgrade head
@@ -161,6 +165,9 @@ there require rebuilding the image.
 | APP_DATABASE_URL | Required server-only `postgresql+asyncpg` connection URL |
 | APP_DATABASE_TIMEOUT_SECONDS | Readiness deadline, default 3 seconds |
 | API_PROXY_TARGET | Vite development proxy target; never sent to browser code |
+| APP_REDIS_URL | Server-only Redis URL for queue and shared rate limits |
+| APP_IMPORT_DOWNLOAD_BYTES | Compressed archive cap; default 10485760 bytes |
+| APP_IMPORT_TIMEOUT_SECONDS | Total import attempt timeout; default 90 seconds |
 | APP_ENVIRONMENT | development/test/production; production enforces HTTPS cookies |
 | APP_FRONTEND_ORIGIN | Exact browser origin; default http://localhost:3000 |
 | APP_COOKIE_SECURE | false for local HTTP; true for HTTPS deployment |
@@ -189,8 +196,8 @@ Compose injects it, while host commands explicitly load it.
 
 Read [ADR 0001](docs/decisions/0001-modular-monolith.md) and the
 [security model](docs/security.md). Authentication now uses dedicated services, repositories, schemas, and dependencies.
-See [ADR 0002](docs/decisions/0002-session-authentication.md). Workers, model providers,
-and retrieval remain future milestones.
+See [ADR 0002](docs/decisions/0002-session-authentication.md). Background imports are now implemented; see [ADR 0003](docs/decisions/0003-public-repository-import.md).
+Model providers and retrieval remain future milestones.
 
 ## Migration notes
 
@@ -198,7 +205,9 @@ Revision `0001_enable_pgvector` enables the vector extension and retains it on
 downgrade. Revision `0002_users_and_sessions` adds users and hashed sessions,
 a unique email constraint, a cascading user foreign key, and session indexes.
 The migration account must be allowed to create the extension and application
-tables. Downgrading 0002 deletes accounts and sessions; do not use it as a routine
+tables. Revision `0003_repository_imports` adds owned repositories, durable import
+jobs, and snapshot files with composite foreign keys and dispatch indexes.
+Downgrading 0003 deletes import data; downgrading 0002 deletes accounts and sessions; do not use it as a routine
 troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
 ## Common errors
@@ -226,13 +235,13 @@ docker compose down
 
 ## Progress
 
-Implemented: React/Vite foundation, FastAPI health API, user registration,
-password hashing, server-side sessions, CSRF, protected UI, migrations, Compose,
-focused tests, and CI definition. See `docs/validation.md` for actual
+Implemented: authentication, owned public repositories, bounded archive imports,
+Redis/Celery background processing, durable dispatch/recovery, basic source browsing,
+shared throttling, migrations, Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: public repository import with ownership checks and Redis/Celery. Postponed:
-email verification/recovery, OAuth, distributed throttling, indexing, retrieval,
-grounded chat, agents, patches, sandbox execution, and evaluation datasets.
+Next: Python AST indexing, symbols, and chunk inspection. Postponed: email
+verification/recovery, OAuth/private repositories, refresh/reindex, embeddings,
+retrieval, grounded chat, agents, patches, and sandbox execution.
 
-Suggested commit: `feat(auth): add session authentication and protected workspace`
+Suggested commit: `feat(repositories): add owned public imports and background jobs`
