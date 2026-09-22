@@ -94,6 +94,7 @@ export function RepositoryWorkspace({ csrf, onExpired }: Props) {
         <FileBrowser
           key={opened.id}
           repository={opened}
+          csrf={csrf}
           onClose={() => setOpened(null)}
           onExpired={onExpired}
         />

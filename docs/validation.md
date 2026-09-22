@@ -1,45 +1,39 @@
 # Validation record
 
-Milestones 1 and 2: the user reported completion after receiving their local
-validation procedures. Those local results were not independently rerun here.
+Milestones 1–3: the user reported completion after receiving local validation
+procedures. Those local results were not independently rerun here.
 
-## Milestone 3
+## Milestone 4
 
-Implemented, with available checks passing. Full acceptance still requires the
-user's Docker/infrastructure/browser checks or executed CI results.
+Implemented; tool-run checks pass. Local real-infrastructure/browser acceptance
+remains required before treating the milestone as fully accepted.
 
 Verified here:
 
-- Ruff lint/formatting and strict mypy pass (49 application modules).
-- Backend: 62 tests pass. Four infrastructure tests skip intentionally.
-- Tests cover all earlier auth behavior; ownership across repository endpoints;
-  CSRF; persisted queued jobs without a broker; duplicate URLs; quotas surviving
-  deletion; worker duplicate delivery; lease takeover; cancellation fencing;
-  transactional publication; dispatcher failure/recovery; retry exhaustion;
-  unsafe URL/path rejection; archive expansion/storage/count limits; exclusions;
-  GitHub response errors and pinned-commit download paths.
-- Portable API/worker tests use the real ORM/service pipeline with SQLite and
-  controlled GitHub responses. They do not verify PostgreSQL locking or transport.
-- Frontend: TypeScript, ESLint, Prettier, 13 component tests, and production build pass.
-- Repository UI tests cover authenticated import submission, errors/retry, escaped
-  source rendering, reselecting files, and session-expiry handling.
-- Alembic offline SQL generation reaches 0003_repository_imports.
-- The upgrade patch is checked/applied against Milestone 2 and compared to final files.
+- Ruff lint and formatting; strict mypy (60 application modules).
+- Backend: 87 tests pass; 4 infrastructure tests skip intentionally.
+- Earlier authentication/import regression tests continue passing.
+- New tests cover lexical scopes, decorators, signatures/docstrings, repeated names,
+  exact source reconstruction, Unicode/CRLF, byte limits, empty/invalid source,
+  explicit fallback, owner-scoped APIs, CSRF, duplicate delivery, dispatcher routing,
+  cancellation, lease takeover, atomic rollback, cross-snapshot constraints,
+  failed-generation preservation, persisted symbol links and cascading deletion.
+- SQLite tests exercise real ORM/services but do not establish PostgreSQL lock semantics.
+- Frontend: TypeScript, ESLint, Prettier, 16 component tests and production build.
+- UI tests cover index submission with CSRF, action errors, diagnostics, source
+  ranges and escaped untrusted chunk text, alongside earlier UI regressions.
+- Offline inspection CLI and Alembic SQL generation through 0004_source_indexes.
+- Upgrade patch applies to the exact delivered Milestone 3 and matches final files.
 
-Not executed here:
+Not run here:
 
-- Docker builds/startup and migration 0003 on real PostgreSQL/pgvector.
-- ORM/migration drift check against PostgreSQL.
-- Redis atomic-rate-limit integration and the real Celery queue roundtrip test.
-- Live public GitHub import and worker restart/cancellation acceptance.
-- Browser desktop/mobile/keyboard review; this environment lacks working Chromium.
-- GitHub Actions itself. A workflow definition is not a CI run result.
+- Docker builds/startup, migration on real PostgreSQL, or live alembic check.
+- Real Redis/Celery transport and PostgreSQL locking/constraints integration.
+  The integration queue test now covers both import and indexing; CI is configured
+  to run it, but no GitHub Actions run was observed here.
+- Browser desktop/mobile/keyboard acceptance (no working browser runtime here).
 
-See docs/milestone-3.md for commands and expected behavior. Its isolated integration
-suite uses a dedicated *_test database and Redis DB 1; do not run the worker fixture
-against application data. CI runs that suite with its own service containers.
-
-Known upstream warnings remain: Starlette test-client httpx deprecation and its
-AnyIO BlockingPortal alias. They are not suppressed. One narrow type-check exception
-bridges redis-py's untyped generic command API; its Lua result is validated. Celery's
-untyped task decorator is isolated at the worker entry point. No paid AI calls occur.
+Follow docs/milestone-4.md, including its isolated infrastructure gate. No paid AI
+calls are used. Two existing upstream warnings remain visible: Starlette's httpx
+test-client deprecation and its AnyIO BlockingPortal alias. Narrow type exceptions
+remain isolated at Redis's generic command API and Celery's untyped task decorators.

@@ -474,3 +474,47 @@ footer > span {
     max-height: 170px;
   }
 }
+
+.index-inspector {
+  border-top: 1px solid #dce4e8;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+.symbol-list {
+  list-style: none;
+  padding: 0;
+}
+.symbol-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e4e9ec;
+}
+.symbol-list code {
+  overflow-wrap: anywhere;
+}
+.symbol-list span {
+  color: #526572;
+  font-size: 0.85rem;
+}
+.chunk-detail {
+  margin: 0.7rem 0;
+  padding: 0.7rem;
+  border: 1px solid #dce4e8;
+  border-radius: 0.5rem;
+}
+.chunk-detail summary {
+  cursor: pointer;
+}
+.chunk-detail pre {
+  overflow: auto;
+  max-height: 28rem;
+  background: #f4f7f8;
+  padding: 0.8rem;
+  font-size: 0.85rem;
+}
+.indexed-file {
+  min-width: 0;
+}

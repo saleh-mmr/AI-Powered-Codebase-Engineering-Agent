@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     import_download_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
     import_timeout_seconds: int = Field(default=90, ge=10, le=120)
+    index_timeout_seconds: int = Field(default=90, ge=10, le=120)
     dispatcher_interval_seconds: int = Field(default=5, ge=1, le=30)
 
     @field_validator("redis_url")

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.indexing.errors import LeaseLost
-from app.models import ImportJob, Repository
+from app.models import ImportJob, Repository, RepositoryIndex
 
 
 @dataclass(frozen=True)
@@ -20,27 +20,31 @@ class Claim:
     attempt: int
 
 
-async def claim_job(factory: async_sessionmaker[AsyncSession], job_id: UUID) -> Claim | None:
+async def claim_job(
+    factory: async_sessionmaker[AsyncSession],
+    job_id: UUID,
+    model: type[ImportJob] | type[RepositoryIndex] = ImportJob,
+) -> Claim | None:
     now = datetime.now(UTC)
     lease = uuid4()
     async with factory() as db:
         job = (
-            await db.scalars(
-                update(ImportJob)
+            await db.execute(
+                update(model)
                 .where(
-                    ImportJob.id == job_id,
-                    ImportJob.is_current.is_(True),
-                    ImportJob.attempts < 3,
-                    ImportJob.available_at <= now,
+                    model.id == job_id,
+                    model.is_current.is_(True),
+                    model.attempts < 3,
+                    model.available_at <= now,
                     or_(
-                        ImportJob.status == "queued",
-                        and_(ImportJob.status == "running", ImportJob.lease_expires_at < now),
+                        model.status == "queued",
+                        and_(model.status == "running", model.lease_expires_at < now),
                     ),
                 )
                 .values(
                     status="running",
-                    stage="metadata",
-                    attempts=ImportJob.attempts + 1,
+                    stage="starting",
+                    attempts=model.attempts + 1,
                     lease_token=lease,
                     lease_expires_at=now + timedelta(seconds=180),
                     started_at=now,
@@ -48,7 +52,7 @@ async def claim_job(factory: async_sessionmaker[AsyncSession], job_id: UUID) -> 
                     error_code=None,
                     error_message=None,
                 )
-                .returning(ImportJob)
+                .returning(model.id, model.repository_id, model.attempts)
             )
         ).one_or_none()
         if job is None:
@@ -63,23 +67,30 @@ async def claim_job(factory: async_sessionmaker[AsyncSession], job_id: UUID) -> 
         return result
 
 
-def lease_condition(claim: Claim) -> ColumnElement[bool]:
+def lease_condition(
+    claim: Claim, model: type[ImportJob] | type[RepositoryIndex] = ImportJob
+) -> ColumnElement[bool]:
     return and_(
-        ImportJob.id == claim.job_id,
-        ImportJob.status == "running",
-        ImportJob.lease_token == claim.lease_token,
-        ImportJob.is_current.is_(True),
-        ImportJob.lease_expires_at > datetime.now(UTC),
+        model.id == claim.job_id,
+        model.status == "running",
+        model.lease_token == claim.lease_token,
+        model.is_current.is_(True),
+        model.lease_expires_at > datetime.now(UTC),
     )
 
 
-async def report_stage(factory: async_sessionmaker[AsyncSession], claim: Claim, stage: str) -> None:
+async def report_stage(
+    factory: async_sessionmaker[AsyncSession],
+    claim: Claim,
+    stage: str,
+    model: type[ImportJob] | type[RepositoryIndex] = ImportJob,
+) -> None:
     async with factory() as db:
         found = await db.scalar(
-            update(ImportJob)
-            .where(lease_condition(claim))
+            update(model)
+            .where(lease_condition(claim, model))
             .values(stage=stage)
-            .returning(ImportJob.id)
+            .returning(model.id)
         )
         if found is None:
             raise LeaseLost()

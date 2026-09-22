@@ -9,6 +9,7 @@ from app.database.base import Base
 class RepositoryFile(Base):
     __tablename__ = "repository_files"
     __table_args__ = (
+        UniqueConstraint("id", "import_job_id", name="uq_repository_file_source"),
         ForeignKeyConstraint(
             ["import_job_id", "repository_id"],
             ["import_jobs.id", "import_jobs.repository_id"],

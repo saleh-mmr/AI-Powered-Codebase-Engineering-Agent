@@ -60,3 +60,28 @@ def import_repository(job_id: str) -> None:
         logging.getLogger("repopilot.worker").error(
             "worker_task_failed", extra={"error_type": type(exc).__name__}
         )
+
+
+async def execute_index(job_id: UUID) -> None:
+    from app.jobs.index_repository import run_index
+
+    engine = create_engine(settings)
+    try:
+        await run_index(
+            async_sessionmaker(engine, expire_on_commit=False),
+            job_id,
+            settings.index_timeout_seconds,
+        )
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="repopilot.index_repository")  # type: ignore[untyped-decorator]
+def index_repository(job_id: str) -> None:
+    configure_logging()
+    try:
+        asyncio.run(execute_index(UUID(job_id)))
+    except Exception as exc:
+        logging.getLogger("repopilot.worker").error(
+            "index_task_failed", extra={"error_type": type(exc).__name__}
+        )
