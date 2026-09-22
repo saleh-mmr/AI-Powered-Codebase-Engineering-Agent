@@ -1,7 +1,7 @@
-# Security model — Milestone 2
+# Security model — Milestone 3
 
-Users and sessions are implemented. No repository imports, model calls, or code
-execution are available. Public deployment is not part of this milestone.
+Users, sessions, and bounded public repository imports are implemented. No model
+calls or repository code execution are available. Public deployment is not part of this milestone.
 
 ## Identity and writes
 
@@ -10,7 +10,7 @@ execution are available. Public deployment is not part of this milestone.
 - HttpOnly, host-only, SameSite=Lax cookies; production settings require Secure/HTTPS.
 - Login rotates the browser session; logout revokes it; expiry is checked server-side.
 - Every authenticated endpoint derives its user from the session. Frontend IDs do
-  not establish authority. Per-repository checks arrive with repository resources.
+  not establish authority. Repository and file actions now enforce ownership in database queries.
 - Exact Origin plus a custom request header and JSON content type protect auth
   writes. Authenticated writes also require a session-bound CSRF proof. No permissive CORS.
 - Validation errors omit raw values, preventing password reflection.
@@ -20,12 +20,25 @@ execution are available. Public deployment is not part of this milestone.
 
 ## Resource limits and deployment boundary
 
-A bounded process-local throttle limits valid auth attempts by normalized email
-and network peer. It resets on restart and is not shared between workers. Behind
-nginx it conservatively treats the proxy as the peer; it does not trust arbitrary
-forwarded-IP headers. Introduce Redis-backed limits and explicit trusted-proxy
-configuration before multi-worker/public deployment. Password hashing is offloaded
-from the event loop, with at most two concurrent Argon2 operations per process.
+Authentication and import submissions use atomic shared Redis counters. Redis
+failures fail closed; no process-local fallback is used in production code. Imports
+are limited to five attempts/hour/user and twenty stored repositories/user. The
+hourly counter survives deletion. Redis is configured with a bounded noeviction
+policy and append-only persistence. Password hashing remains offloaded and bounded
+to two concurrent Argon2 operations per process.
+
+Repository URLs are restricted to public github.com roots. HTTP requests only target
+api.github.com and codeload.github.com with bounded bodies and no redirects. Commit
+metadata is validated, and archives are pinned to the resolved SHA. No files are
+extracted to the host. Unsafe paths reject imports; links/special files, credential
+filenames, binaries, vendor/generated files, and oversized files are skipped.
+Expansion, entry count, retained content, parsing time, and overall runtime are capped.
+Filename exclusions are not a complete secret scanner. Never assume a public repo
+contains no secrets. Source text is displayed through React's escaped rendering.
+
+Jobs use atomic claims and expiring lease tokens. Cancelled/stale workers cannot
+publish. Successful file publication is transactional. Repository removal cascades
+to jobs and files. Retries cannot execute repository content.
 
 Compose binds ports to loopback. API and frontend containers run as non-root. The
 frontend sends a content security policy. Secrets stay server-side; `.env*` files
@@ -34,7 +47,7 @@ credentials must be retained during upgrades.
 
 The local PostgreSQL provisioning account is not a least-privilege production
 runtime account. Before public deployment, separate migration/runtime roles,
-provision TLS, add shared abuse controls, email verification/account recovery,
+provision TLS, review shared abuse controls, add email verification/account recovery,
 review dependency/image versions and pin deployable image digests, and review
 operational endpoint exposure. Session idle timeout and all-device logout are later.
 
@@ -49,8 +62,9 @@ Expired session rows are deleted during session creation. Logout deletes the
 current row immediately. Users own sessions through a cascading foreign key.
 Application responses never serialize password hashes or token hashes.
 
-No arbitrary commands or imported code are executed. Future imports require
-URL/path validation and resource limits; execution requires an independently
-reviewed isolation boundary.
+No arbitrary commands or imported code are executed. The import worker has CPU,
+memory/process limits and a read-only filesystem, but is trusted application code
+with database access. It is not a code-execution sandbox. Executing repository
+code will require an independent isolation boundary with no application secrets.
 
-See ADR 0002 for the implementation choices and remaining tradeoffs.
+See ADR 0002 and ADR 0003 for implementation choices and remaining tradeoffs.

@@ -38,6 +38,7 @@ describe('authentication workspace', () => {
     const fetcher = vi
       .fn()
       .mockImplementation((path: string, options?: RequestInit) => {
+        if (path.endsWith('/repositories')) return Promise.resolve(json([]));
         if (path.endsWith('/me')) return Promise.resolve(json(session));
         if (path.endsWith('/logout')) {
           expect(options?.headers).toMatchObject({
@@ -64,6 +65,7 @@ describe('authentication workspace', () => {
     const fetcher = vi
       .fn()
       .mockImplementation((path: string, options?: RequestInit) => {
+        if (path.endsWith('/repositories')) return Promise.resolve(json([]));
         if (path.endsWith('/me')) return Promise.resolve(guest());
         if (path.endsWith('/register')) {
           expect(options?.headers).toMatchObject({
@@ -100,12 +102,14 @@ describe('authentication workspace', () => {
         .fn()
         .mockImplementation((path: string) =>
           Promise.resolve(
-            path.endsWith('/me')
-              ? guest()
-              : json(
-                  { error: { message: 'Email or password is incorrect.' } },
-                  401,
-                ),
+            path.endsWith('/repositories')
+              ? json([])
+              : path.endsWith('/me')
+                ? guest()
+                : json(
+                    { error: { message: 'Email or password is incorrect.' } },
+                    401,
+                  ),
           ),
         ),
     );
@@ -152,11 +156,13 @@ describe('authentication workspace', () => {
         .fn()
         .mockImplementation((path: string) =>
           Promise.resolve(
-            path.endsWith('/me')
-              ? json(session)
-              : path.endsWith('/logout')
-                ? json({ error: { message: 'Sign-out failed.' } }, 503)
-                : health(),
+            path.endsWith('/repositories')
+              ? json([])
+              : path.endsWith('/me')
+                ? json(session)
+                : path.endsWith('/logout')
+                  ? json({ error: { message: 'Sign-out failed.' } }, 503)
+                  : health(),
           ),
         ),
     );

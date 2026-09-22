@@ -14,10 +14,25 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
   migrate:
     build: ./backend
     environment: &backend_environment
       APP_DATABASE_URL: ${APP_DATABASE_URL:?Set APP_DATABASE_URL in .env}
+      APP_REDIS_URL: ${APP_REDIS_URL:-redis://redis:6379/0}
+      APP_IMPORT_DOWNLOAD_BYTES: ${APP_IMPORT_DOWNLOAD_BYTES:-10485760}
+      APP_IMPORT_TIMEOUT_SECONDS: ${APP_IMPORT_TIMEOUT_SECONDS:-90}
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-development}
       APP_FRONTEND_ORIGIN: ${APP_FRONTEND_ORIGIN:-http://localhost:3000}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
@@ -33,6 +48,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
+      redis:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -40,6 +57,32 @@ services:
       interval: 10s
       timeout: 6s
       retries: 5
+  worker:
+    build: ./backend
+    environment: *backend_environment
+    command: ["celery", "-A", "app.jobs.celery_app:celery_app", "worker", "--loglevel=WARNING", "--concurrency=1"]
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 100
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+  dispatcher:
+    build: ./backend
+    environment: *backend_environment
+    command: ["python", "-m", "app.jobs.dispatcher"]
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
   frontend:
     build: ./frontend
     ports:
@@ -49,3 +92,4 @@ services:
         condition: service_healthy
 volumes:
   postgres_data:
+  redis_data:

@@ -4,8 +4,8 @@ Source requirements: project-specification.md. The user selected React; ADR 0001
 records the React + TypeScript + Vite change from the proposed Next.js frontend.
 
 1. Runnable foundation — implemented; user reported completion of local validation.
-2. Authentication — implemented; awaiting PostgreSQL/browser acceptance for Milestone 2.
-3. Public repository import — GitHub integration, Celery/Redis, ownership, job states.
+2. Authentication — implemented; user reported completion of local validation.
+3. Public repository import — implemented; pending real-infrastructure/browser acceptance.
 4. Python indexing and source browsing — AST chunks, immutable snapshot generations.
 5. Hybrid search and benchmark — vector/lexical/symbol retrieval, Recall@K and MRR.
 6. Grounded Q&A — provider interfaces, context construction, validated citations.
@@ -21,6 +21,6 @@ Milestones 1–7 deliver the initial repository-understanding MVP. Evaluation st
 with retrieval, background jobs start with import, and authorization starts before
 user repositories. No major milestone advances without a clear validation gate.
 
-Postponed after Milestone 2: React Query, Tailwind/shadcn, routing, Redis, workers,
-AI, repository import, code execution, email verification/recovery and OAuth.
+Postponed after Milestone 3: React Query, Tailwind/shadcn, routing, AST indexing,
+AI, successful-import refresh, code execution, email verification/recovery and OAuth.
 These are intentionally absent, not stub implementations.

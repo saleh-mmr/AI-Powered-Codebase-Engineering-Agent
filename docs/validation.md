@@ -1,43 +1,45 @@
 # Validation record
 
-## Milestone 1
+Milestones 1 and 2: the user reported completion after receiving their local
+validation procedures. Those local results were not independently rerun here.
 
-The user reported completion after receiving the Docker/database validation
-procedure. Those local results were not independently rerun in the authoring
-environment. The original baseline had 7 backend and 4 frontend tests passing,
-with live API/proxy smoke checks and a successful frontend build.
+## Milestone 3
 
-## Milestone 2
-
-Implemented; PostgreSQL/browser acceptance remains pending on the user's machine
-or in CI. Do not treat authored CI configuration as an executed CI result.
+Implemented, with available checks passing. Full acceptance still requires the
+user's Docker/infrastructure/browser checks or executed CI results.
 
 Verified here:
 
-- Backend Ruff lint/formatting and strict mypy pass.
-- 25 backend tests pass; two PostgreSQL integration tests skip intentionally.
-- API auth tests exercise real password hashes, ORM storage, service logic, and
-  cookie handling against disposable SQLite databases; no mock auth service.
-- Coverage includes registration, duplicate normalized email, cookie flags,
-  session rotation, old-cookie replay, expiry, missing/invalid cookie, generic
-  login errors, cross-user ID injection, CSRF isolation, origin/custom-header
-  checks, validation redaction, JSON-only requests, and login throttling.
-- Frontend TypeScript, ESLint, Prettier, nine component tests, and production build pass.
-- Frontend tests use controlled HTTP responses; they are not browser E2E tests.
-- Alembic offline upgrade SQL generation and revision chain are checked.
-- Upgrade patch is checked against the original Milestone 1 source snapshot.
+- Ruff lint/formatting and strict mypy pass (49 application modules).
+- Backend: 62 tests pass. Four infrastructure tests skip intentionally.
+- Tests cover all earlier auth behavior; ownership across repository endpoints;
+  CSRF; persisted queued jobs without a broker; duplicate URLs; quotas surviving
+  deletion; worker duplicate delivery; lease takeover; cancellation fencing;
+  transactional publication; dispatcher failure/recovery; retry exhaustion;
+  unsafe URL/path rejection; archive expansion/storage/count limits; exclusions;
+  GitHub response errors and pinned-commit download paths.
+- Portable API/worker tests use the real ORM/service pipeline with SQLite and
+  controlled GitHub responses. They do not verify PostgreSQL locking or transport.
+- Frontend: TypeScript, ESLint, Prettier, 13 component tests, and production build pass.
+- Repository UI tests cover authenticated import submission, errors/retry, escaped
+  source rendering, reselecting files, and session-expiry handling.
+- Alembic offline SQL generation reaches 0003_repository_imports.
+- The upgrade patch is checked/applied against Milestone 2 and compared to final files.
 
-Pending:
+Not executed here:
 
-- Applying revision 0002 to PostgreSQL and checking ORM/migration drift.
-- Running both real PostgreSQL integration tests.
-- Building and starting the updated Docker images.
-- Browser-based registration/login/refresh/logout, desktop/mobile visual review,
-  and keyboard checks. The authoring environment lacks a working Chromium runtime.
-- Executing GitHub Actions on the user's repository.
+- Docker builds/startup and migration 0003 on real PostgreSQL/pgvector.
+- ORM/migration drift check against PostgreSQL.
+- Redis atomic-rate-limit integration and the real Celery queue roundtrip test.
+- Live public GitHub import and worker restart/cancellation acceptance.
+- Browser desktop/mobile/keyboard review; this environment lacks working Chromium.
+- GitHub Actions itself. A workflow definition is not a CI run result.
 
-Use docs/milestone-2.md for exact upgrade and acceptance commands.
+See docs/milestone-3.md for commands and expected behavior. Its isolated integration
+suite uses a dedicated *_test database and Redis DB 1; do not run the worker fixture
+against application data. CI runs that suite with its own service containers.
 
-Known upstream warnings: Starlette's test client deprecates its current httpx
-integration and uses a deprecated AnyIO BlockingPortal alias. Tests pass; neither
-warning is suppressed. Track compatible upstream updates. No paid API calls occur.
+Known upstream warnings remain: Starlette test-client httpx deprecation and its
+AnyIO BlockingPortal alias. They are not suppressed. One narrow type-check exception
+bridges redis-py's untyped generic command API; its Lua result is validated. Celery's
+untyped task decorator is isolated at the worker entry point. No paid AI calls occur.

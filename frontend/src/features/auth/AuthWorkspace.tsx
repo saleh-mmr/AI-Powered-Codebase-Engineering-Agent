@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { RepositoryWorkspace } from '../repositories/RepositoryWorkspace';
 import { SystemStatus } from '../system/SystemStatus';
 import { AuthForm } from './AuthForm';
 import { AuthError, getSession, logout } from './api';
@@ -12,6 +13,7 @@ type State =
 export function AuthWorkspace() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const expireSession = useCallback(() => setState({ kind: 'guest' }), []);
   const [pending, setPending] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   useEffect(() => {
@@ -105,8 +107,8 @@ export function AuthWorkspace() {
           <span className="eyebrow">START WITH CLARITY</span>
           <h2>A home for your codebase knowledge.</h2>
           <p>
-            Your account is the first step. Connecting repositories and grounded
-            AI answers arrive in the next milestones.
+            Your account is the first step. Connect public repositories after
+            signing in. Grounded AI answers arrive in later milestones.
           </p>
           <p className="note">
             Keep this development instance private. Email verification and
@@ -116,30 +118,33 @@ export function AuthWorkspace() {
       </div>
     );
   return (
-    <div className="grid">
-      <section className="status-card">
-        <span className="eyebrow">YOUR WORKSPACE</span>
-        <h2>Welcome, {state.session.user.name}.</h2>
-        <p>{state.session.user.email}</p>
-        <div className="empty-state">
-          <strong>No repositories connected yet.</strong>
-          <p>Repository import is coming in Milestone 3.</p>
-        </div>
-        {logoutError && (
-          <p role="alert" className="form-error">
-            {logoutError}
-          </p>
-        )}
-        <button
-          disabled={pending}
-          onClick={() => {
-            void signOut();
-          }}
-        >
-          {pending ? 'Signing out…' : 'Sign out'}
-        </button>
-      </section>
-      <SystemStatus />
-    </div>
+    <>
+      <div className="grid">
+        <section className="status-card">
+          <span className="eyebrow">YOUR WORKSPACE</span>
+          <h2>Welcome, {state.session.user.name}.</h2>
+          <p>{state.session.user.email}</p>
+
+          {logoutError && (
+            <p role="alert" className="form-error">
+              {logoutError}
+            </p>
+          )}
+          <button
+            disabled={pending}
+            onClick={() => {
+              void signOut();
+            }}
+          >
+            {pending ? 'Signing out…' : 'Sign out'}
+          </button>
+        </section>
+        <SystemStatus />
+      </div>
+      <RepositoryWorkspace
+        csrf={state.session.csrf_token}
+        onExpired={expireSession}
+      />
+    </>
   );
 }
