@@ -536,3 +536,61 @@ footer > span {
 .search-form button {
   justify-self: start;
 }
+
+.answer-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+  padding: 0.8rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 0.6rem;
+}
+.grounded-answer {
+  margin-top: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.answer-claims {
+  padding-left: 1.4rem;
+}
+.answer-claims li {
+  margin-bottom: 1.3rem;
+}
+.answer-claims p {
+  white-space: pre-wrap;
+}
+.citation-link {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+}
+.answer-source {
+  margin-top: 1rem;
+  scroll-margin-top: 1rem;
+}
+.answer-source:target {
+  outline: 2px solid currentColor;
+  outline-offset: 0.4rem;
+}
+.answer-source h5 {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.answer-source pre {
+  max-height: 22rem;
+  overflow: auto;
+  padding: 1rem;
+  background: #f4f6f8;
+  border-radius: 0.5rem;
+}
+.answer-question {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.answer-limitation {
+  padding: 1rem;
+  border-left: 3px solid #b38b2e;
+  white-space: pre-wrap;
+}

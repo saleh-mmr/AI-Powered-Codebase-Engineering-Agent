@@ -1,7 +1,8 @@
-# Security model — Milestone 3
+# Security model — through Milestone 6
 
-Users, sessions, and bounded public repository imports are implemented. No model
-calls or repository code execution are available. Public deployment is not part of this milestone.
+Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
+are implemented. Repository code execution is not available. Public deployment
+still requires the controls described below.
 
 ## Identity and writes
 
@@ -110,3 +111,35 @@ requests. They do not replace a global paid-deployment budget or prevent multipl
 account abuse. Public registration/spend enforcement remains a deployment gate.
 Source text is rendered escaped and remains untrusted input for future RAG prompts.
 Retrieval scores are not confidence probabilities or authorization decisions.
+
+
+## Milestone 6 generation boundary
+
+Every settings/answer route checks repository ownership before provider configuration
+or spend. POST requires session-bound CSRF. Generation is disabled by default.
+When enabled, a deliberate question sends bounded retrieved source and the question
+to a fixed HTTPS provider endpoint, with redirects and proxy inheritance disabled.
+No tools, secrets, arbitrary endpoints or execution interfaces are exposed to the
+model. The versioned system prompt treats all source as untrusted data. This reduces
+impact; it does not prove prompt-injection resistance or factual accuracy.
+
+Responses are size-limited, typed and checked for refusal/incompleteness. Model paths
+and line ranges are never accepted as source authority: the UI gets those from
+retrieval. Unknown/duplicate citation IDs reject the answer. React displays source
+and claims as text with local anchors, without rendering model HTML/links. CSP remains.
+
+The service has a 60-second deadline and releases DB connections before generation.
+Shared Redis limits bound attempts per user and across this deployment. Failed calls
+consume attempts; there are no automatic paid retries. These quotas are not a durable
+financial ledger. Reset Redis, multiple deployments and uncertain provider outcomes
+remain accounting risks. Configure provider-side spend controls and review account
+abuse before any public paid deployment. Existing embedding spend needs its own
+aggregate enforcement too.
+
+Question and answer bodies are not stored or logged. Logs record generated answer
+IDs, safe failure codes, model, accepted usage/cost and timing. Rejected citations
+can still incur cost; usage is logged first. Incomplete/malformed/transport failures
+can have unknown usage. Client disconnection is not a billing cancellation guarantee.
+The provider request sets store=false, which is not a zero-retention assurance.
+Review provider data handling terms before sending source. Private repositories
+and execution remain outside the present scope.

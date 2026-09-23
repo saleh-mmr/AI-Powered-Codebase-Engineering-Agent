@@ -1,12 +1,12 @@
 # Validation record
 
-Milestones 1–4: the user reported completion after receiving local validation
+Milestones 1–5: the user reported completion after receiving local validation
 procedures. Those local results were not independently rerun here.
 
 ## Milestone 5
 
-Implemented; available checks pass. Full acceptance still requires the supplied
-local PostgreSQL/Redis/Celery, browser and retrieval benchmark procedures.
+Implemented; available checks passed. The user subsequently reported local
+completion; those database/browser/benchmark results were not independently rerun here.
 
 Verified here:
 
@@ -45,3 +45,31 @@ Two pre-existing upstream test warnings remain visible: Starlette's httpx test-c
 deprecation and AnyIO BlockingPortal alias. Narrow typing bridges remain in the
 Redis generic-command API and Celery decorators. EmbeddingVector's TypeEngine[Any]
 is the SQLAlchemy dialect adapter's generic return type, not unvalidated API data.
+
+
+## Milestone 6
+
+Implemented; local full-stack and live-model acceptance remain pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (93 application modules).
+- Backend: 143 tests pass; six infrastructure tests skip without opt-in.
+- New tests cover structured provider transport, no storage/tools, model/usage
+  validation, incomplete output, refusal, malformed JSON, safe provider errors,
+  no automatic retries, context limits, citation IDs, owner/CSRF checks, disabled
+  mode, request validation, no-evidence abstention, shared deployment quota and
+  released database transactions before generation.
+- Existing authentication/import/index/retrieval regression tests remain passing.
+- Frontend: TypeScript/ESLint/Prettier checks, 24 component tests and production build.
+- The fixed-context fixture validates all eight cases without a model call. Its
+  runner preserves invalid-citation failures and usage, and leaves human grades null.
+- The app factory/lifespan starts in the API tests with default generation disabled.
+- No database schema or dependency lockfiles changed; head remains 0005_hybrid_search.
+- The M6 upgrade patch is checked and applied against the exact M5 archive, then
+  all final packaged source files are compared with the applied result.
+
+Not executed here: real PostgreSQL/Redis/Celery and Docker startup, actual CI,
+manual browser acceptance, live Responses API calls or human-rated answer evaluation.
+No paid calls were made; mocked contract tests are not evidence of live model quality.
+Two existing upstream Starlette/AnyIO warnings remain as described above.
