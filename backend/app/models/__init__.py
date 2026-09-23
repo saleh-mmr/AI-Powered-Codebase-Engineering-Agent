@@ -1,3 +1,4 @@
+from app.models.answer_run import AnswerRun
 from app.models.code import CodeChunk, CodeSymbol
 from app.models.conversation import Conversation, Message
 from app.models.import_job import ImportJob
@@ -12,6 +13,7 @@ from app.models.user import User
 __all__ = [
     "Conversation",
     "Message",
+    "AnswerRun",
     "User",
     "Session",
     "Repository",

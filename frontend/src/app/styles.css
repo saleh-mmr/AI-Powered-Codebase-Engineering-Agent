@@ -627,3 +627,21 @@ footer > span {
   overflow: auto;
   padding: 0.5rem;
 }
+
+.answer-runs {
+  padding-left: 1.3rem;
+}
+.answer-runs li {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #dce3e8;
+  overflow-wrap: anywhere;
+}
+.search-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8rem;
+  font: inherit;
+  resize: vertical;
+  border: 1px solid #c6cdd4;
+  border-radius: 0.5rem;
+}

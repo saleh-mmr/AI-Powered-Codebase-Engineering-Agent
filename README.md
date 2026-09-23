@@ -1,15 +1,16 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 7A, saved conversations and grounded answers.**
+engineering agent. **Current scope: Milestone 7B, durable background answers.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
 Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
 semantic retrieval and opt-in grounded answers with validated source references are available.
 Conversations now save completed Q&A with source snapshots. Questions remain independent;
-model history, background answer runs and streaming are the next slice.
+named conversations now use durable background runs with reload recovery.
+Model history and streaming remain the next slice.
 
-**Upgrading from Milestone 6?** Follow [the Milestone 7A upgrade guide](docs/milestone-7a.md).
+**Upgrading from Milestone 7A?** Follow [the Milestone 7B upgrade guide](docs/milestone-7b.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -54,7 +55,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0006_conversations (head)`.
+The migration should report `0007_answer_runs (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -217,6 +218,8 @@ Revision `0005_hybrid_search` adds search generations/documents, lexical GIN and
 pgvector storage. Downgrading 0005 removes search data but retains source indexes.
 Revision `0006_conversations` adds owned conversations and ordered message pairs;
 downgrading it removes saved history. See [ADR 0007](docs/decisions/0007-persistent-conversations.md).
+Revision `0007_answer_runs` adds durable run records and idempotency/active-run constraints.
+See [ADR 0008](docs/decisions/0008-durable-answer-runs.md); downgrading it removes run records.
 Downgrading 0003 deletes import data; downgrading 0002 deletes accounts and sessions; do not use it as a routine
 troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
@@ -251,8 +254,8 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: local saved-conversation acceptance, then durable answer runs and streaming. Postponed: email
+Next: local background-run acceptance, then streaming and bounded model history. Postponed: email
 verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
-model conversation memory, durable answer runs/streaming, agents, patches, and sandbox execution.
+model conversation memory, streaming, complete usage receipts, agents, patches, and sandbox execution.
 
-Suggested commit: `feat(conversations): persist grounded questions and cited answers`
+Suggested commit: `feat(runs): add durable background answers and idempotent submission`

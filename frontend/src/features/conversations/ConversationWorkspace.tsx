@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { RunComposer } from '../runs/RunComposer';
 import { ApiError } from '../../lib/api/http';
 import { AnswerPanel } from '../answers/AnswerPanel';
 import {
@@ -24,6 +25,11 @@ export function ConversationWorkspace({
   const [title, setTitle] = useState('');
   const [revision, setRevision] = useState(0);
   const [historyRevision, setHistoryRevision] = useState(0);
+  const completed = useCallback(() => {
+    setHistoryRevision((v) => v + 1);
+    setRevision((v) => v + 1);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [answerBusy, setAnswerBusy] = useState(false);
@@ -204,18 +210,24 @@ export function ConversationWorkspace({
           />
         </>
       )}
-      <AnswerPanel
-        key={selected?.id ?? 'temporary'}
-        repositoryId={repositoryId}
-        csrf={csrf}
-        onExpired={onExpired}
-        conversationId={selected?.id}
-        onBusy={setAnswerBusy}
-        onSaved={() => {
-          setHistoryRevision((v) => v + 1);
-          setRevision((v) => v + 1);
-        }}
-      />
+      {selected ? (
+        <RunComposer
+          key={selected.id}
+          conversationId={selected.id}
+          repositoryId={repositoryId}
+          csrf={csrf}
+          onExpired={onExpired}
+          onCompleted={completed}
+        />
+      ) : (
+        <AnswerPanel
+          key="temporary"
+          repositoryId={repositoryId}
+          csrf={csrf}
+          onExpired={onExpired}
+          onBusy={setAnswerBusy}
+        />
+      )}
     </section>
   );
 }

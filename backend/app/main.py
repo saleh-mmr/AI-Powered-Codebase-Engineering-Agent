@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.api.routes.answer_runs import router as run_router
 from app.api.routes.answers import router as answer_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.conversations import router as conversation_router
@@ -69,6 +70,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(index_router)
     app.include_router(search_router)
     app.include_router(answer_router)
+    app.include_router(run_router)
     app.include_router(conversation_router)
 
     @app.middleware("http")

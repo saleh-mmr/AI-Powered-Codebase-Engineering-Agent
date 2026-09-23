@@ -78,8 +78,8 @@ Two existing upstream Starlette/AnyIO warnings remain as described above.
 
 ## Milestone 7A
 
-Implemented persistence slice; Milestone 7 remains in progress. Local PostgreSQL
-migration/drift and browser save/reload acceptance remain pending.
+Implemented persistence slice; the user subsequently reported completion. These
+local results were not independently rerun here. Milestone 7 remains in progress.
 
 Verified here:
 
@@ -109,3 +109,33 @@ two upstream test deprecation warnings remain visible and explained above.
 The migration and concurrent-publication test are defined, not claimed as passed
 against a real PostgreSQL server. No background answer recovery, model history or
 streaming is claimed for 7A.
+
+
+## Milestone 7B
+
+Implemented background execution slice; full-stack local acceptance remains pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (106 application modules).
+- Backend: 162 tests pass; seven infrastructure tests skip without opt-in.
+- New cases cover idempotent replay/conflicts, single active runs, atomic transcript
+  publication, duplicate delivery, cancellation before/during generation, safe
+  failures, owner/CSRF checks, configuration/source guards and dispatcher expiry.
+- Frontend: TypeScript/ESLint/Prettier, 31 component tests and production build pass.
+- UI cases cover reload without resubmission, cancellation, reuse of the same request
+  key after an uncertain response, and known versus unknown usage.
+- Offline Alembic SQL generation reaches 0007_answer_runs.
+- The upgrade patch is checked and applied against the exact 7A archive; all applied
+  source files are compared against the final source before packaging.
+
+Not executed here: real PostgreSQL migration/drift and concurrency, Redis/Celery
+roundtrip, Docker builds/startup, browser acceptance or actual CI. The existing
+worker integration test now includes a mocked-provider answer run but remains one
+of the seven skipped infrastructure tests. No paid provider calls were made.
+Two existing upstream Starlette/AnyIO deprecation warnings remain.
+
+Follow milestone-7b.md for infrastructure tests and manual acceptance. Polling is
+implemented; SSE replay, conversation context and full per-call usage receipts
+remain for 7C. Cancellation fences publication but cannot guarantee refund or
+termination of an already accepted remote provider call.

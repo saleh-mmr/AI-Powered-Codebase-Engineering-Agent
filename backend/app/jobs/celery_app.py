@@ -113,3 +113,53 @@ def prepare_search(job_id: str) -> None:
         logging.getLogger("repopilot.worker").error(
             "search_task_failed", extra={"error_type": type(exc).__name__}
         )
+
+
+async def execute_answer(run_id: UUID) -> None:
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.core.rate_limits import RedisRateLimiter
+    from app.embeddings.factory import create_provider
+    from app.generation.factory import create_answer_provider
+    from app.jobs.answer_run import run_answer
+    from app.retrieval.postgres import PostgresCandidates
+    from app.services.answers import AnswerService
+    from app.services.search import SearchService
+
+    engine = create_engine(settings)
+    redis = Redis.from_url(
+        settings.redis_url.get_secret_value(),
+        socket_timeout=2,
+        socket_connect_timeout=2,
+        decode_responses=True,
+    )
+    try:
+        async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+            limiter = RedisRateLimiter(redis)
+
+            def build(db: AsyncSession) -> AnswerService:
+                search = SearchService(
+                    db, PostgresCandidates(db), limiter, settings, create_provider(settings, client)
+                )
+                return AnswerService(
+                    db, search, limiter, settings, create_answer_provider(settings, client)
+                )
+
+            await run_answer(
+                async_sessionmaker(engine, expire_on_commit=False), run_id, settings, build
+            )
+    finally:
+        await redis.aclose()
+        await engine.dispose()
+
+
+@celery_app.task(name="repopilot.answer_run")  # type: ignore[untyped-decorator]
+def answer_run(run_id: str) -> None:
+    configure_logging()
+    try:
+        asyncio.run(execute_answer(UUID(run_id)))
+    except Exception as exc:
+        logging.getLogger("repopilot.worker").error(
+            "answer_task_failed", extra={"job_id": run_id, "error_type": type(exc).__name__}
+        )
