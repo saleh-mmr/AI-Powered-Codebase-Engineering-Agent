@@ -1,13 +1,15 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 6, grounded repository Q&A.**
+engineering agent. **Current scope: Milestone 7A, saved conversations and grounded answers.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
 Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
 semantic retrieval and opt-in grounded answers with validated source references are available.
+Conversations now save completed Q&A with source snapshots. Questions remain independent;
+model history, background answer runs and streaming are the next slice.
 
-**Upgrading from Milestone 5?** Follow [the Milestone 6 upgrade guide](docs/milestone-6.md).
+**Upgrading from Milestone 6?** Follow [the Milestone 7A upgrade guide](docs/milestone-7a.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -52,7 +54,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0005_hybrid_search (head)`.
+The migration should report `0006_conversations (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -109,7 +111,7 @@ Expected: TypeScript/ESLint/Prettier pass, component tests pass, and Vite create
 ### Real database and queue integration tests
 
 Use the dedicated `repopilot_test` database procedure in
-[Milestone 5](docs/milestone-5.md#real-postgresql-pgvector-and-queue-validation).
+[Milestone 7A](docs/milestone-7a.md#real-postgresqlqueue-tests).
 It applies migrations and runs PostgreSQL/Redis/Celery checks against isolated test
 data. Never run those tests against your application or production database.
 
@@ -213,6 +215,8 @@ Revision `0004_source_indexes` adds versioned indexes, symbols and chunks with
 source/symbol constraints. Downgrading 0004 removes indexes but keeps imports.
 Revision `0005_hybrid_search` adds search generations/documents, lexical GIN and
 pgvector storage. Downgrading 0005 removes search data but retains source indexes.
+Revision `0006_conversations` adds owned conversations and ordered message pairs;
+downgrading it removes saved history. See [ADR 0007](docs/decisions/0007-persistent-conversations.md).
 Downgrading 0003 deletes import data; downgrading 0002 deletes accounts and sessions; do not use it as a routine
 troubleshooting step. ORM metadata and migrations are checked for drift in CI.
 
@@ -247,8 +251,8 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: local grounded-answer acceptance, then persistent conversations and streaming. Postponed: email
+Next: local saved-conversation acceptance, then durable answer runs and streaming. Postponed: email
 verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
-persistent chat, agents, patches, and sandbox execution.
+model conversation memory, durable answer runs/streaming, agents, patches, and sandbox execution.
 
-Suggested commit: `feat(answers): add grounded repository Q&A with validated citations`
+Suggested commit: `feat(conversations): persist grounded questions and cited answers`

@@ -20,7 +20,7 @@ const evidence = z.object({
   end_line: z.number(),
   content: z.string(),
 });
-const response = z.object({
+export const answerSchema = z.object({
   answer_id: z.string(),
   status: z.enum(['answered', 'insufficient_evidence', 'refused']),
   claims: z.array(
@@ -40,7 +40,7 @@ const response = z.object({
   context_omitted: z.number(),
   duration_ms: z.number(),
 });
-export type Answer = z.infer<typeof response>;
+export type Answer = z.infer<typeof answerSchema>;
 export async function getAnswerSettings(
   id: string,
   signal: AbortSignal,
@@ -57,13 +57,19 @@ export async function askRepository(
   mode: SearchMode,
   csrf: string,
   signal: AbortSignal,
+  conversationId?: string,
 ): Promise<Answer> {
-  return response.parse(
-    await requestJSON(`/repositories/${id}/answers`, {
-      method: 'POST',
-      headers: writeHeaders(csrf),
-      body: JSON.stringify({ question, mode }),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(65000)]),
-    }),
+  return answerSchema.parse(
+    await requestJSON(
+      conversationId
+        ? `/conversations/${conversationId}/messages`
+        : `/repositories/${id}/answers`,
+      {
+        method: 'POST',
+        headers: writeHeaders(csrf),
+        body: JSON.stringify({ question, mode }),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(65000)]),
+      },
+    ),
   );
 }

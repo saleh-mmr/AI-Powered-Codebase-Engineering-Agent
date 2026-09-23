@@ -9,7 +9,10 @@ from app.database.base import Base
 
 class Repository(Base):
     __tablename__ = "repositories"
-    __table_args__ = (UniqueConstraint("user_id", "source_key", name="uq_repository_user_source"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "source_key", name="uq_repository_user_source"),
+        UniqueConstraint("id", "user_id", name="uq_repository_id_owner"),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     source_key: Mapped[str] = mapped_column(String(200))

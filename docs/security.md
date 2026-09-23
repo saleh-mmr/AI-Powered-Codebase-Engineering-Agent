@@ -1,4 +1,4 @@
-# Security model — through Milestone 6
+# Security model — through Milestone 7A
 
 Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
 are implemented. Repository code execution is not available. Public deployment
@@ -143,3 +143,29 @@ can have unknown usage. Client disconnection is not a billing cancellation guara
 The provider request sets store=false, which is not a zero-retention assurance.
 Review provider data handling terms before sending source. Private repositories
 and execution remain outside the present scope.
+
+
+## Milestone 7A transcript storage and retention
+
+Named conversations now persist user questions, validated answers, quoted source
+snapshots and accepted usage metadata in PostgreSQL. The M6 temporary-answer route
+remains stateless. The UI distinguishes these modes. Earlier no-storage statements
+above describe M6, not the new saved-conversation routes. Neither mode logs bodies.
+
+Each conversation uses a composite repository/owner foreign key; all reads/writes
+also check the authenticated owner. Client IDs alone convey no authority. Writes
+require CSRF; model-produced or client-submitted roles/answer payloads cannot bypass
+the existing provider and citation validation. Only server-validated results are
+saved, with atomic question/answer publication. React renders stored titles/messages
+and code as text. Source snapshots may outlive deleted indexes intentionally.
+
+Deletion of a conversation removes its messages; deleting a repository or account
+cascades down the ownership chain. Backup policies are separate and not implemented
+as a user erasure guarantee. Bound lists/messages and per-repository/per-conversation
+limits constrain growth. This is not yet a public retention/export policy.
+
+No lock spans generation. If a conversation is deleted before publication, its answer
+is not saved or the conversation recreated. Provider cost can still occur. Failed
+or interrupted requests have no durable pending run, financial ledger or idempotency
+key in 7A. Refresh history before a deliberate retry; do not describe this slice as
+exactly-once or crash-recoverable generation. 7B must address those execution states.
