@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     Float,
@@ -52,6 +53,7 @@ class AnswerRun(Base):
     request_key: Mapped[UUID] = mapped_column(nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64))
     question: Mapped[str] = mapped_column(Text)
+    history: Mapped[list[dict[str, object]]] = mapped_column(JSON, server_default="[]")
     mode: Mapped[str] = mapped_column(String(20))
     source_index_id: Mapped[UUID] = mapped_column(nullable=False)
     config_hash: Mapped[str] = mapped_column(String(64))

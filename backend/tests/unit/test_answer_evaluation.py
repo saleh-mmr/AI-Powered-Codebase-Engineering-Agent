@@ -42,3 +42,15 @@ def test_evaluation_preserves_invalid_citation_failure_and_usage():
     result = asyncio.run(evaluate_case(empty, provider, settings))
     assert result["expected_status_match"] is True and result["model_called"] is False
     assert provider.calls == 1
+
+
+def test_followup_fixture_includes_wrong_history_injection_and_missing_evidence():
+    from app.evaluation.answers import DATASET
+
+    cases = load_cases(DATASET.parents[1] / "followups-v1" / "cases.json")
+    assert len(cases) == 4 and all(case.history for case in cases)
+    assert {case.id for case in cases} >= {
+        "false-prior-answer",
+        "history-injection",
+        "history-without-evidence",
+    }

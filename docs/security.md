@@ -1,4 +1,4 @@
-# Security model — through Milestone 7B
+# Security model — through Milestone 7C1
 
 Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
 are implemented. Repository code execution is not available. Public deployment
@@ -190,3 +190,25 @@ Usage marked unknown may be billable; completed totals are not an account-wide l
 The UI does not persist question/source bodies in localStorage. Reload fetches owned
 server state without automatic resubmission. Streaming and event replay are not yet
 implemented; polling reauthenticates on every request. Model history is still absent.
+
+
+## Milestone 7C1 conversation context
+
+Named background runs snapshot at most three recent answered pairs from the owned
+conversation and the same source-index ID. Snapshot selection stops at an ineligible
+pair. History is limited to 1,000 estimated tokens and 8 KiB; the complete prompt
+retains its 8,000 estimated-token / 64 KiB limit. Whole oldest pairs are omitted first.
+Only prior question and claim text are copied, not old evidence or citation metadata.
+History remains untrusted JSON in a user payload, never a system/assistant role.
+Prompt instructions discourage following embedded instructions; they are not a hard
+prompt-injection defense. No execution tools or privileges have been added.
+
+Current source evidence remains the only citation authority. Citation membership
+checks do not prove factual grounding. History poisoning/incorrect previous answers
+remain model-quality risks covered by the new evaluation fixture, not claimed solved.
+The snapshot is retained with its answer_run until conversation/repository deletion;
+existing cascading authorization and deletion boundaries apply. No history is logged.
+The external-model disclosure now includes selected previous turns. There is no extra
+model call; larger generation input can cost more. Temporary and legacy synchronous
+questions keep empty history. New configuration hashes fence old queued runs across
+this prompt/policy change. Do not requeue paid work automatically during upgrade.

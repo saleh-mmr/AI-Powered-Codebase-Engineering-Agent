@@ -18,11 +18,12 @@ from app.generation.context import (
     INSTRUCTIONS,
     PROMPT_HASH,
     PROMPT_VERSION,
-    build_input,
+    build_context,
     validate_citations,
 )
 from app.generation.contracts import AnswerProvider
 from app.generation.factory import create_answer_provider
+from app.generation.history import HISTORY_POLICY, HistoryTurn, history_tokens
 from app.schemas.answer import AnswerRequest
 from app.schemas.search import Evidence
 
@@ -37,15 +38,16 @@ class Case(BaseModel):
     expected_facts: list[str]
     forbidden_claims: list[str]
     evidence: list[Evidence] = Field(max_length=8)
+    history: list[HistoryTurn] = Field(default_factory=list, max_length=3)
 
 
-def load_cases() -> list[Case]:
-    cases = TypeAdapter(list[Case]).validate_json(DATASET.read_bytes())
+def load_cases(dataset: Path = DATASET) -> list[Case]:
+    cases = TypeAdapter(list[Case]).validate_json(dataset.read_bytes())
     if not cases or len({case.id for case in cases}) != len(cases):
         raise ValueError("Dataset IDs must be nonempty and unique")
     for case in cases:
         AnswerRequest(question=case.question)
-        build_input(case.question, case.evidence)
+        build_context(case.question, case.evidence, case.history)
         if len({e.citation_id for e in case.evidence}) != len(case.evidence):
             raise ValueError("Duplicate evidence IDs")
         if case.expected_status == "answered" and (not case.evidence or not case.expected_facts):
@@ -86,10 +88,11 @@ async def evaluate_case(
         else:
             row["model_called"] = True
             row["usage_known"] = False
+            payload, included = build_context(case.question, case.evidence, case.history)
+            row["included_history"] = [turn.model_dump(mode="json") for turn in included]
+            row["history_tokens"] = history_tokens(included)
             async with asyncio.timeout(35):
-                result = await provider.generate(
-                    INSTRUCTIONS, build_input(case.question, case.evidence)
-                )
+                result = await provider.generate(INSTRUCTIONS, payload)
             row.update(
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
@@ -124,16 +127,18 @@ async def evaluate_case(
     return row
 
 
-async def run_evaluation(settings: Settings) -> dict[str, object]:
-    cases = load_cases()
+async def run_evaluation(settings: Settings, dataset: Path = DATASET) -> dict[str, object]:
+    cases = await asyncio.to_thread(load_cases, dataset)
+    dataset_hash = sha256(await asyncio.to_thread(dataset.read_bytes)).hexdigest()
     async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
         provider = create_answer_provider(settings, client)
         if provider is None:
             raise ValueError("Enable APP_ANSWERS_ENABLED for a paid evaluation")
         rows = [await evaluate_case(case, provider, settings) for case in cases]
     return {
-        "dataset": "answers-v1-fixed-context",
-        "dataset_sha256": sha256(DATASET.read_bytes()).hexdigest(),
+        "dataset": str(dataset),
+        "history_policy": HISTORY_POLICY,
+        "dataset_sha256": dataset_hash,
         "prompt_version": PROMPT_VERSION,
         "prompt_hash": PROMPT_HASH,
         "model": settings.answer_model,
@@ -160,14 +165,16 @@ def main() -> None:
         "--allow-paid", action="store_true", help="Send synthetic evidence to the real provider"
     )
     parser.add_argument("--output", type=Path, default=Path("evaluation/answers/reports/run.json"))
+    parser.add_argument("--dataset", type=Path, default=DATASET)
     args = parser.parse_args()
+    dataset = args.dataset
     if args.check:
         print(
             json.dumps(
                 {
-                    "valid_cases": len(load_cases()),
+                    "valid_cases": len(load_cases(dataset)),
                     "provider_calls": 0,
-                    "dataset_sha256": sha256(DATASET.read_bytes()).hexdigest(),
+                    "dataset_sha256": sha256(dataset.read_bytes()).hexdigest(),
                 }
             )
         )
@@ -176,7 +183,7 @@ def main() -> None:
     settings = Settings(
         database_url="postgresql+asyncpg://evaluation:unused@localhost/evaluation_test"
     )
-    result = asyncio.run(run_evaluation(settings))
+    result = asyncio.run(run_evaluation(settings, dataset))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(f"Wrote {args.output}; review per-case answers and fill human grades.")

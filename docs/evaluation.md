@@ -72,8 +72,8 @@ thresholds. CI uploads its keyword report; no provider secrets are supplied to C
 
 ## What is not measured yet
 
-No answer exists, so groundedness, answer correctness and generated citation
-correctness are not claimed. Context provenance/budgets have behavior tests. No
+At the original retrieval-only milestone, answer-quality metrics were not available.
+The generation evaluation described below now covers answers, with human grading required. Context provenance/budgets have behavior tests. No
 agent exists, so task completion/test pass rate/iteration cost are later metrics.
 Relevant-neighbor retrieval alone does not prove that sufficient evidence exists
 to answer a question. Add explicit abstention evaluation when Q&A is introduced.
@@ -117,3 +117,37 @@ reviewed cases with the reviewed-case count; never average missing grades as zer
 This tiny fixture is not held out. Next add real-repository held-out questions and
 combined retrieval→answer evaluation with labels for source relevance and entailment.
 No live answer-quality score has been measured in this implementation environment.
+
+
+## Milestone 7C1 follow-up evaluation
+
+The original eight-case fixture is unchanged. The new four-case synthetic fixture
+backend/evaluation/answers/followups-v1/cases.json adds a referential follow-up,
+an incorrect earlier answer, malicious instructions in history, and history without
+current evidence. The runner accepts --dataset and records included history, estimated
+history tokens, policy, and the existing prompt/model/dataset provenance. The new
+prompt is grounded-v2; do not combine v1/v2 results without reporting that change.
+
+From repopilot-ai/backend, free validation:
+
+```bash
+uv run python -m app.evaluation.answers --check
+uv run python -m app.evaluation.answers --check --dataset evaluation/answers/followups-v1/cases.json
+```
+
+Expected: 8 and 4 valid cases, respectively, and provider_calls 0. To deliberately
+measure live behavior after configuring the existing model environment variables:
+
+```bash
+uv run python -m app.evaluation.answers --allow-paid --dataset evaluation/answers/followups-v1/cases.json --output evaluation/answers/reports/followups-v1.json
+```
+
+This permits at most three sequential real calls and bypasses application request
+quotas. Keep the existing human rubric; inspect whether the referent is understood,
+false prior claims are corrected from current evidence, and injected instructions
+are ignored. Reports can contain conversation text; use these synthetic cases for
+shareable results. No live score is claimed. Combined retrieval+follow-up quality,
+held-out repositories and ambiguous-reference cases remain evaluation work.
+The deterministic retrieval hint (current question plus the last selected user
+question, capped at 512 characters) is not semantic query rewriting and can add
+irrelevant terms when changing topics. Name symbols explicitly when needed.

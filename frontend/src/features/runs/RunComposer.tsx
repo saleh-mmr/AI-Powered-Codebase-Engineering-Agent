@@ -154,8 +154,10 @@ export function RunComposer({
     <section className="index-inspector" aria-label="Background answers">
       <h4>Ask in the background</h4>
       <p>
-        Each question is answered independently. You can close this view and
-        reopen the conversation to check progress.
+        Follow-up questions can use up to three recent answered turns from the
+        same source index. Older or oversized turns may be omitted. Name the
+        function or file if a follow-up is ambiguous. You can close this view
+        and reopen the conversation to check progress.
       </p>
       <button
         disabled={busy}
@@ -171,8 +173,9 @@ export function RunComposer({
       )}
       {settings?.enabled && (
         <p className="field-help">
-          Submitting sends the question and retrieved code to OpenAI when the
-          worker starts, and can incur API charges. Model: {settings.model}.
+          Submitting sends the question, selected recent turns, and retrieved
+          code to OpenAI when the worker starts, and can incur API charges.
+          Model: {settings.model}.
         </p>
       )}
       <form

@@ -52,3 +52,6 @@ class AnswerResponse(BaseModel):
     estimated_generation_cost_usd: float
     estimated_retrieval_cost_usd: float
     duration_ms: float
+    history_turn_ids: list[UUID] = Field(default_factory=list, max_length=3)
+    history_tokens: int = Field(default=0, ge=0, le=1000)
+    history_policy: str = "none"

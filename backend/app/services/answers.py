@@ -13,10 +13,17 @@ from app.generation.context import (
     INSTRUCTIONS,
     PROMPT_HASH,
     PROMPT_VERSION,
-    build_input,
+    build_context,
     validate_citations,
 )
 from app.generation.contracts import AnswerProvider, GenerationResult
+from app.generation.history import (
+    HISTORY_POLICY,
+    HistoryTurn,
+    bounded_history,
+    history_tokens,
+    retrieval_question,
+)
 from app.repositories.repository import RepositoryStore
 from app.schemas.answer import AnswerRequest, AnswerResponse, AnswerSettings
 from app.schemas.search import SearchRequest
@@ -54,13 +61,20 @@ class AnswerService:
         repository_id: UUID,
         request: AnswerRequest,
         expected_source_id: UUID | None = None,
+        history: list[HistoryTurn] | None = None,
     ) -> AnswerResponse:
         answer_id = uuid4()
         started = perf_counter()
         try:
             async with asyncio.timeout(60):
                 return await self._answer(
-                    answer_id, started, user_id, repository_id, request, expected_source_id
+                    answer_id,
+                    started,
+                    user_id,
+                    repository_id,
+                    request,
+                    expected_source_id,
+                    bounded_history(history or []),
                 )
         except TimeoutError:
             logger.warning(
@@ -88,6 +102,7 @@ class AnswerService:
         repository_id: UUID,
         request: AnswerRequest,
         expected_source_id: UUID | None,
+        history: list[HistoryTurn],
     ) -> AnswerResponse:
         # Authorize before checking configuration, using quotas, or sending any data externally.
         await RepositoryStore(self.db).owned(user_id, repository_id)
@@ -106,7 +121,7 @@ class AnswerService:
             user_id,
             repository_id,
             SearchRequest(
-                query=request.question,
+                query=retrieval_question(request.question, history),
                 mode=request.mode,
                 top_k=8,
                 context_token_budget=6000,
@@ -120,9 +135,10 @@ class AnswerService:
                 "The source index changed after submission. Submit a new run.",
                 409,
             )
+        included: list[HistoryTurn] = []
         result: GenerationResult | None = None
         if retrieved.context:
-            payload = build_input(request.question, retrieved.context)
+            payload, included = build_context(request.question, retrieved.context, history)
             logger.info(
                 "answer_model_requested",
                 extra={
@@ -189,6 +205,9 @@ class AnswerService:
             output_tokens=result.output_tokens if result else 0,
             estimated_generation_cost_usd=cost,
             estimated_retrieval_cost_usd=retrieved.estimated_query_cost_usd,
+            history_turn_ids=[turn.turn_id for turn in included],
+            history_tokens=history_tokens(included),
+            history_policy=HISTORY_POLICY if history else "none",
             duration_ms=round((perf_counter() - started) * 1000, 2),
         )
         logger.info(
