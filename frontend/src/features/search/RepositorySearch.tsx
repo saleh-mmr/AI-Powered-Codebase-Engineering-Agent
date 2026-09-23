@@ -135,7 +135,7 @@ export function RepositorySearch({ repositoryId, csrf, onExpired }: Props) {
               : 'Prepare selected search'}
         </button>
       </div>
-      <p>Inspect retrieved source before connecting it to AI answers.</p>
+      <p>Inspect the evidence independently, then ask a question below.</p>
       {statusError && <p role="status">{statusError}</p>}
       {state?.latest && (
         <p role="status">

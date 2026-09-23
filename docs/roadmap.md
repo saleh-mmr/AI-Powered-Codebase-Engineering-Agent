@@ -7,9 +7,9 @@ records the React + TypeScript + Vite change from the proposed Next.js frontend.
 2. Authentication — implemented; user reported completion of local validation.
 3. Public repository import — implemented; user reported completion of local validation.
 4. Python indexing and source browsing — implemented; user reported local validation complete.
-5. Hybrid search and benchmark — implemented; local PostgreSQL/browser/benchmark acceptance pending.
-6. Grounded Q&A — provider interfaces, context construction, validated citations.
-7. Streaming MVP — background runs, SSE recovery, usage tracking, complete UI states.
+5. Hybrid search and benchmark — implemented; user reported completion of local validation.
+6. Grounded Q&A — implemented; local full-stack/live-provider acceptance pending.
+7. Streaming MVP — conversations/messages, background runs, SSE recovery, durable usage tracking, complete UI states.
 8. Read-only investigation agent — typed tools, bounded loops, action timeline.
 9. Plans and patch proposals — pinned base, safe patch application, diff inspection.
 10. Isolated execution — separate security boundary, curated test environments.
@@ -21,6 +21,6 @@ Milestones 1–7 deliver the initial repository-understanding MVP. Evaluation st
 with retrieval, background jobs start with import, and authorization starts before
 user repositories. No major milestone advances without a clear validation gate.
 
-Postponed after Milestone 5: React Query, Tailwind/shadcn, routing, local embedding adapter, learned reranking,
-AI answers, successful-import refresh, code execution, email verification/recovery and OAuth.
+Postponed after Milestone 6: React Query, Tailwind/shadcn, routing, local embedding adapter, learned reranking,
+persistent chat, successful-import refresh, code execution, email verification/recovery and OAuth.
 These are intentionally absent, not stub implementations.

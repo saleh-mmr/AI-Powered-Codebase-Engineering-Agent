@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AnswerPanel } from '../answers/AnswerPanel';
 import { RepositorySearch } from '../search/RepositorySearch';
 import { IndexInspector } from '../indexing/IndexInspector';
 import { ApiError } from '../../lib/api/http';
@@ -153,6 +154,12 @@ export function FileBrowser({ repository, csrf, onClose, onExpired }: Props) {
         onExpired={onExpired}
       />
       <RepositorySearch
+        repositoryId={repository.id}
+        csrf={csrf}
+        onExpired={onExpired}
+      />
+      <AnswerPanel
+        key={repository.id}
         repositoryId={repository.id}
         csrf={csrf}
         onExpired={onExpired}

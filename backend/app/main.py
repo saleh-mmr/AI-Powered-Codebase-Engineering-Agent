@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.api.routes.answers import router as answer_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router
 from app.api.routes.indexes import router as index_router
@@ -25,6 +26,7 @@ from app.core.logging import configure_logging
 from app.core.rate_limits import RedisRateLimiter
 from app.database.session import DatabaseProbe, create_engine
 from app.embeddings.factory import create_provider
+from app.generation.factory import create_answer_provider
 
 logger = logging.getLogger("repopilot.http")
 
@@ -48,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.auth_throttle = AuthThrottle(app.state.rate_limiter)
         embedding_client = httpx.AsyncClient(trust_env=False, follow_redirects=False)
         app.state.embedding_provider = create_provider(config, embedding_client)
+        app.state.answer_provider = create_answer_provider(config, embedding_client)
         app.state.readiness_probe = DatabaseProbe(engine, config.database_timeout_seconds)
         try:
             yield
@@ -64,6 +67,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(repository_router)
     app.include_router(index_router)
     app.include_router(search_router)
+    app.include_router(answer_router)
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: RequestResponseEndpoint) -> Response:

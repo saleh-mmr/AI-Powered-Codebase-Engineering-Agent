@@ -1,50 +1,21 @@
 # RepoPilot AI
 
-RepoPilot AI is a production-oriented platform for indexing, understanding,
-and exploring software repositories, built as the foundation for an
-AI-powered software engineering agent.
+A repository-understanding application that will grow into a controlled software
+engineering agent. **Current scope: Milestone 6, grounded repository Q&A.**
+React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
+job dispatcher now support authenticated imports, progress, and basic source browsing.
+Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
+semantic retrieval and opt-in grounded answers with validated source references are available.
 
-It combines asynchronous repository ingestion, versioned source indexing,
-background job processing, authentication, and structured code analysis in
-a full-stack architecture designed for retrieval-augmented code intelligence.
+**Upgrading from Milestone 5?** Follow [the Milestone 6 upgrade guide](docs/milestone-6.md).
+It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
-## Key Features
-
-- Repository ingestion and versioned source indexing
-- Python symbol and source-chunk extraction
-- Asynchronous processing with Celery and Redis
-- PostgreSQL + pgvector persistence
-- Authenticated multi-user workspace
-- Durable job dispatch and recovery
-- React/TypeScript repository explorer
-- Database migrations with Alembic
-- Unit and integration testing
-- Automated CI quality checks
-- Fully containerized local environment
-
-
-## Engineering Quality
-
-RepoPilot is built as a production-oriented system rather than a notebook
-prototype.
-
-- Strict static typing with mypy
-- Ruff linting and formatting
-- Unit and API testing with pytest
-- PostgreSQL + Redis/Celery integration testing
-- Versioned Alembic migrations with schema-drift checks
-- Frontend component testing and production builds
-- Dockerized backend and frontend
-- Automated GitHub Actions CI
-- Health/readiness checks and dependency-failure recovery
-
-  
 ## Requirements
 
 For the complete local stack: Docker Engine/Desktop with Docker Compose v2.
 For host development/checks: Python 3.12, uv 0.12.17, Node.js 24, pnpm 11.19.0.
 The lockfiles pin resolved dependencies. No model or GitHub API key is needed for
-keyword/symbol search. Semantic search is explicitly opt-in; see docs/milestone-5.md.
+keyword/symbol search. Semantic search and AI answers are explicitly opt-in; see docs/milestone-5.md and docs/milestone-6.md.
 
 ## Start the stack
 
@@ -135,26 +106,12 @@ pnpm build
 Expected: TypeScript/ESLint/Prettier pass, component tests pass, and Vite creates
 `frontend/dist/`. Build artifacts are ignored by Git.
 
-### Real database integration test
+### Real database and queue integration tests
 
-First start the Compose stack and apply the migration as above. From the project
-root in a POSIX shell, load the local environment, then replace the container
-hostname for access from the host:
-
-```bash
-set -a
-. ./.env
-set +a
-export APP_DATABASE_URL="${APP_DATABASE_URL/@postgres:/@127.0.0.1:}"
-export APP_REDIS_URL=redis://127.0.0.1:6379/0
-cd backend
-RUN_DB_TESTS=1 uv run pytest -m integration
-```
-
-The URL replacement above requires Bash. For the full isolated integration suite,
-including Celery transport, follow docs/milestone-3.md instead of using application data. Expected: the real readiness integration
-test passes. Without `RUN_DB_TESTS=1`, it is intentionally skipped. Never run
-schema-changing integration tests against a production database.
+Use the dedicated `repopilot_test` database procedure in
+[Milestone 5](docs/milestone-5.md#real-postgresql-pgvector-and-queue-validation).
+It applies migrations and runs PostgreSQL/Redis/Celery checks against isolated test
+data. Never run those tests against your application or production database.
 
 ## Host development with hot reload
 
@@ -200,7 +157,13 @@ there require rebuilding the image.
 | APP_REDIS_URL | Server-only Redis URL for queue and shared rate limits |
 | APP_IMPORT_DOWNLOAD_BYTES | Compressed archive cap; default 10485760 bytes |
 | APP_EMBEDDINGS_ENABLED | false by default; opt in to paid semantic search |
-| APP_OPENAI_API_KEY | Server-only key, required when embeddings are enabled |
+| APP_ANSWERS_ENABLED | false by default; opt in to paid grounded answers |
+| APP_ANSWER_MODEL | Exact model snapshot; default gpt-4.1-mini-2025-04-14 |
+| APP_ANSWER_MAX_OUTPUT_TOKENS | Generation cap, default 1200, maximum 2000 |
+| APP_ANSWER_DAILY_REQUEST_LIMIT | Shared deployment quota, default 100/day |
+| APP_ANSWER_INPUT_PRICE_PER_MILLION | USD estimate, default 0.40 |
+| APP_ANSWER_OUTPUT_PRICE_PER_MILLION | USD estimate, default 1.60 |
+| APP_OPENAI_API_KEY | Server-only key, required when embeddings or answers are enabled |
 | APP_EMBEDDING_TOKEN_BUDGET | Per-preparation reservation budget, default 200000 |
 | APP_EMBEDDING_PRICE_PER_MILLION | Configurable USD estimate, default 0.02 |
 | APP_INDEX_TIMEOUT_SECONDS | Static indexing deadline, default 90 seconds (10–120) |
@@ -236,7 +199,7 @@ Read [ADR 0001](docs/decisions/0001-modular-monolith.md) and the
 See [ADR 0002](docs/decisions/0002-session-authentication.md). Background imports are now implemented; see [ADR 0003](docs/decisions/0003-public-repository-import.md).
 See [ADR 0004](docs/decisions/0004-versioned-static-indexes.md) for the static indexing contracts.
 See [ADR 0005](docs/decisions/0005-hybrid-retrieval.md) and [evaluation methodology](docs/evaluation.md).
-Retrieval is inspectable independently of future answer generation.
+Retrieval remains inspectable independently of answers. See [ADR 0006](docs/decisions/0006-grounded-answers.md).
 
 ## Migration notes
 
@@ -284,6 +247,8 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: hybrid retrieval and reproducible evaluation. Postponed: email
-verification/recovery, OAuth/private repositories, successful-import refresh, embeddings,
-retrieval, grounded chat, agents, patches, and sandbox execution.
+Next: local grounded-answer acceptance, then persistent conversations and streaming. Postponed: email
+verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
+persistent chat, agents, patches, and sandbox execution.
+
+Suggested commit: `feat(answers): add grounded repository Q&A with validated citations`

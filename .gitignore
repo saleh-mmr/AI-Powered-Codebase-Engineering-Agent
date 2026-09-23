@@ -19,3 +19,5 @@ backend/evaluation/retrieval/reports/
 # Local tokenizer downloads are regenerated, not source files.
 **/data-gym-cache/
 **/tokenizer-cache/
+
+backend/evaluation/answers/reports/

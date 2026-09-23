@@ -25,6 +25,14 @@ class Settings(BaseSettings):
             raise ValueError("must be a redis:// or rediss:// connection URL")
         return value
 
+    answers_enabled: bool = False
+    # Use a pinned, structured-output-capable snapshot; evaluate before changing it.
+    answer_model: str = Field(default="gpt-4.1-mini-2025-04-14", pattern=r"^[a-zA-Z0-9._-]{1,100}$")
+    answer_max_output_tokens: int = Field(default=1200, ge=300, le=2000)
+    answer_daily_request_limit: int = Field(default=100, ge=1, le=10000)
+    answer_input_price_per_million: float = Field(default=0.40, ge=0, le=1000, allow_inf_nan=False)
+    answer_output_price_per_million: float = Field(default=1.60, ge=0, le=1000, allow_inf_nan=False)
+
     embeddings_enabled: bool = False
     openai_api_key: SecretStr | None = None
     embedding_token_budget: int = Field(default=200000, ge=1000, le=2000000)
@@ -32,10 +40,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def embedding_configuration(self) -> "Settings":
-        if self.embeddings_enabled and (
+        if (self.embeddings_enabled or self.answers_enabled) and (
             self.openai_api_key is None or not self.openai_api_key.get_secret_value().strip()
         ):
-            raise ValueError("enabled embeddings require APP_OPENAI_API_KEY")
+            raise ValueError("enabled embeddings or answers require APP_OPENAI_API_KEY")
         return self
 
     environment: Literal["development", "production", "test"] = "development"
