@@ -13,8 +13,18 @@ interface Props {
   repositoryId: string;
   csrf: string;
   onExpired: () => void;
+  conversationId?: string;
+  onSaved?: () => void;
+  onBusy?: (busy: boolean) => void;
 }
-export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
+export function AnswerPanel({
+  repositoryId,
+  csrf,
+  onExpired,
+  conversationId,
+  onSaved,
+  onBusy,
+}: Props) {
   const id = useId();
   const [settings, setSettings] = useState<AnswerSettings | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -51,6 +61,7 @@ export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
     request.current = controller;
     const submittedQuestion = question.trim();
     setBusy(true);
+    onBusy?.(true);
     setError(null);
     setAnswer(null);
     setAnsweredQuestion(submittedQuestion);
@@ -61,8 +72,12 @@ export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
         mode,
         csrf,
         controller.signal,
+        conversationId,
       );
-      if (!controller.signal.aborted) setAnswer(result);
+      if (!controller.signal.aborted) {
+        setAnswer(result);
+        if (conversationId) onSaved?.();
+      }
     } catch (reason) {
       if (controller.signal.aborted) return;
       if (reason instanceof ApiError && reason.status === 401) onExpired();
@@ -73,7 +88,10 @@ export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
             : 'Answer request failed or timed out. A provider charge may have occurred. Retry deliberately.',
         );
     } finally {
-      if (!controller.signal.aborted) setBusy(false);
+      if (!controller.signal.aborted) {
+        setBusy(false);
+        onBusy?.(false);
+      }
     }
   }
   return (
@@ -87,7 +105,10 @@ export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
       </div>
       <p>
         Ask one question about this snapshot. Prepare the selected search mode
-        above first. Questions and answers are not saved yet.
+        above first.{' '}
+        {conversationId
+          ? 'Validated answers are saved here. Each question is answered independently; history is not model memory yet.'
+          : 'This is a temporary question; select a conversation above to save it.'}
       </p>
       {!settings && !configError && (
         <p role="status">Loading answer settings…</p>
@@ -163,7 +184,12 @@ export function AnswerPanel({ repositoryId, csrf, onExpired }: Props) {
           {error}
         </p>
       )}
-      {answer && (
+      {answer && conversationId && (
+        <p role="status">
+          Answer saved. You can reopen it in this conversation.
+        </p>
+      )}
+      {answer && !conversationId && (
         <>
           <p className="answer-question">Question: {answeredQuestion}</p>
           <GroundedAnswer answer={answer} />

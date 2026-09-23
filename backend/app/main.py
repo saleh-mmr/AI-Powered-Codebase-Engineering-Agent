@@ -13,6 +13,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.routes.answers import router as answer_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.conversations import router as conversation_router
 from app.api.routes.health import router
 from app.api.routes.indexes import router as index_router
 from app.api.routes.repositories import router as repository_router
@@ -68,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(index_router)
     app.include_router(search_router)
     app.include_router(answer_router)
+    app.include_router(conversation_router)
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: RequestResponseEndpoint) -> Response:

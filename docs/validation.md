@@ -1,6 +1,6 @@
 # Validation record
 
-Milestones 1–5: the user reported completion after receiving local validation
+Milestones 1–6: the user reported completion after receiving local validation
 procedures. Those local results were not independently rerun here.
 
 ## Milestone 5
@@ -49,7 +49,8 @@ is the SQLAlchemy dialect adapter's generic return type, not unvalidated API dat
 
 ## Milestone 6
 
-Implemented; local full-stack and live-model acceptance remain pending.
+Implemented; the user subsequently reported local completion. Those live-provider
+and full-stack results were not independently rerun here.
 
 Verified here:
 
@@ -73,3 +74,38 @@ Not executed here: real PostgreSQL/Redis/Celery and Docker startup, actual CI,
 manual browser acceptance, live Responses API calls or human-rated answer evaluation.
 No paid calls were made; mocked contract tests are not evidence of live model quality.
 Two existing upstream Starlette/AnyIO warnings remain as described above.
+
+
+## Milestone 7A
+
+Implemented persistence slice; Milestone 7 remains in progress. Local PostgreSQL
+migration/drift and browser save/reload acceptance remain pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (98 application modules).
+- Backend: 151 tests pass; seven infrastructure tests skip without opt-in.
+- Eight new API cases cover saved question/answer pairs, owner/CSRF checks, provider
+  and citation failures without partial writes, paged ordering, rollback of counter
+  allocation on insert failure, composite owner constraint, delete cascades,
+  full-conversation rejection and deletion during generation.
+- Saved evidence remains readable after source-index deletion. History reads do
+  not invoke the provider. No database transaction spans model I/O in the fake-provider test.
+- Frontend: TypeScript/ESLint/Prettier, 28 component tests and production build pass.
+- New UI tests cover create/save/reopen after remount without another model request,
+  one citation target per saved answer, explicit deletion confirmation, pagination,
+  read-only history retry and session expiry.
+- Offline Alembic SQL generation reaches 0006_conversations and includes owner,
+  ordering/role/token/payload constraints and the supporting indexes.
+- The upgrade patch is applied to the exact Milestone 6 archive and the applied
+  files are compared with the final source before packaging.
+
+Not executed here: actual PostgreSQL migration/drift or concurrent append test,
+Redis/Celery checks, Docker startup/builds, real browser acceptance or an actual CI
+run. These gates are documented in milestone-7a.md. No paid model calls were made;
+provider behavior/prompt/evaluation are unchanged from Milestone 6. The existing
+two upstream test deprecation warnings remain visible and explained above.
+
+The migration and concurrent-publication test are defined, not claimed as passed
+against a real PostgreSQL server. No background answer recovery, model history or
+streaming is claimed for 7A.

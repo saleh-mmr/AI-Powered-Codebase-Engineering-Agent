@@ -594,3 +594,36 @@ footer > span {
   border-left: 3px solid #b38b2e;
   white-space: pre-wrap;
 }
+
+.conversation-create {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.conversation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.conversation-list button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.conversation-list button[aria-pressed='true'] {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.saved-message {
+  margin: 1rem 0;
+}
+.saved-user {
+  padding: 0.8rem 1rem;
+  background: #eef3f6;
+  border-radius: 0.5rem;
+}
+.conversation-transcript {
+  max-height: 48rem;
+  overflow: auto;
+  padding: 0.5rem;
+}
