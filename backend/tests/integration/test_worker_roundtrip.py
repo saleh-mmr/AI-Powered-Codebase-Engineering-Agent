@@ -31,6 +31,7 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     user_id, repo_id, job_id = uuid4(), uuid4(), uuid4()
     index_id = uuid4()
     search_id = uuid4()
+    conversation_id, answer_id = uuid4(), uuid4()
     queue = "test-" + uuid4().hex
 
     async def resolve(self, owner, name):
@@ -173,6 +174,64 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
         finally:
             await engine.dispose()
 
+    async def queue_answer():
+        from app.jobs.answer_config import config_hash
+        from app.models import AnswerRun, Conversation
+
+        engine = create_engine(settings)
+        try:
+            async with async_sessionmaker(engine)() as db:
+                db.add(
+                    Conversation(
+                        id=conversation_id,
+                        user_id=user_id,
+                        repository_id=repo_id,
+                        title="Worker answers",
+                    )
+                )
+                await db.flush()
+                db.add(
+                    AnswerRun(
+                        id=answer_id,
+                        conversation_id=conversation_id,
+                        request_key=uuid4(),
+                        request_hash="a" * 64,
+                        question="worker fixture",
+                        mode="keyword",
+                        source_index_id=index_id,
+                        config_hash=config_hash(settings),
+                        model=settings.answer_model,
+                    )
+                )
+                await db.commit()
+        finally:
+            await engine.dispose()
+
+    async def verify_answer():
+        from app.models import AnswerRun, Message
+
+        engine = create_engine(settings)
+        try:
+            for _ in range(100):
+                async with async_sessionmaker(engine)() as db:
+                    run = await db.get(AnswerRun, answer_id)
+                    if run.status == "completed":
+                        messages = list(
+                            (
+                                await db.scalars(
+                                    select(Message).where(Message.turn_id == answer_id)
+                                )
+                            ).all()
+                        )
+                        assert len(messages) == 2 and run.usage_state == "recorded"
+                        assert run.input_tokens == 100 and run.output_tokens == 20
+                        return
+                    assert run.status != "failed", run.error_code
+                await asyncio.sleep(0.1)
+            raise AssertionError("Answer worker did not complete within 10 seconds")
+        finally:
+            await engine.dispose()
+
     async def cleanup():
         engine = create_engine(settings)
         try:
@@ -180,6 +239,31 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
                 await connection.execute(delete(User).where(User.id == user_id))
         finally:
             await engine.dispose()
+
+    from app.generation import factory as generation_factory
+    from app.generation.contracts import AnswerDraft, Claim, GenerationResult
+    from app.jobs import celery_app as worker_module
+
+    class FakeAnswers:
+        model = settings.answer_model
+
+        async def generate(self, instructions, evidence_input):
+            return GenerationResult(
+                model=self.model,
+                refused=False,
+                input_tokens=100,
+                output_tokens=20,
+                draft=AnswerDraft(
+                    status="answered",
+                    claims=[Claim(text="Prints worker fixture.", citation_ids=["C1"])],
+                    limitation="",
+                ),
+            )
+
+    monkeypatch.setattr(
+        generation_factory, "create_answer_provider", lambda config, client: FakeAnswers()
+    )
+    monkeypatch.setattr(worker_module.settings, "answers_enabled", True)
 
     asyncio.run(setup())
     try:
@@ -194,5 +278,9 @@ def test_celery_import_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
             asyncio.run(queue_search())
             celery_app.send_task("repopilot.prepare_search", args=[str(search_id)], queue=queue)
             asyncio.run(verify_search())
+            asyncio.run(queue_answer())
+            celery_app.send_task("repopilot.answer_run", args=[str(answer_id)], queue=queue)
+            celery_app.send_task("repopilot.answer_run", args=[str(answer_id)], queue=queue)
+            asyncio.run(verify_answer())
     finally:
         asyncio.run(cleanup())

@@ -1,4 +1,4 @@
-# Security model — through Milestone 7A
+# Security model — through Milestone 7B
 
 Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
 are implemented. Repository code execution is not available. Public deployment
@@ -169,3 +169,24 @@ is not saved or the conversation recreated. Provider cost can still occur. Faile
 or interrupted requests have no durable pending run, financial ledger or idempotency
 key in 7A. Refresh history before a deliberate retry; do not describe this slice as
 exactly-once or crash-recoverable generation. 7B must address those execution states.
+
+
+## Milestone 7B durable execution
+
+Run submissions persist the user question before generation, including questions
+whose runs later fail or are cancelled. Runs inherit ownership via their conversation;
+all submit/read/list/cancel endpoints enforce owner checks and POST CSRF. Cascade
+deletion removes run records. Broker messages contain only run UUIDs, never source
+or credentials. Configuration fingerprints exclude secrets.
+
+Unique request keys and active-run constraints bound duplicate submission. Shared
+admission/model quotas bound casual use, not a financial balance. Running work is
+never automatically reclaimed after lease expiry because its provider outcome may
+be unknown. Cancellation/deletion fence late publication but cannot guarantee remote
+call cancellation. Run state, completed usage and transcript pairs commit atomically.
+The legacy synchronous routes remain available and do not share run idempotency.
+
+Usage marked unknown may be billable; completed totals are not an account-wide ledger.
+The UI does not persist question/source bodies in localStorage. Reload fetches owned
+server state without automatic resubmission. Streaming and event replay are not yet
+implemented; polling reauthenticates on every request. Model history is still absent.

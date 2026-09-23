@@ -49,13 +49,19 @@ class AnswerService:
         )
 
     async def answer(
-        self, user_id: UUID, repository_id: UUID, request: AnswerRequest
+        self,
+        user_id: UUID,
+        repository_id: UUID,
+        request: AnswerRequest,
+        expected_source_id: UUID | None = None,
     ) -> AnswerResponse:
         answer_id = uuid4()
         started = perf_counter()
         try:
             async with asyncio.timeout(60):
-                return await self._answer(answer_id, started, user_id, repository_id, request)
+                return await self._answer(
+                    answer_id, started, user_id, repository_id, request, expected_source_id
+                )
         except TimeoutError:
             logger.warning(
                 "answer_failed", extra={"answer_id": str(answer_id), "error_code": "answer_timeout"}
@@ -81,6 +87,7 @@ class AnswerService:
         user_id: UUID,
         repository_id: UUID,
         request: AnswerRequest,
+        expected_source_id: UUID | None,
     ) -> AnswerResponse:
         # Authorize before checking configuration, using quotas, or sending any data externally.
         await RepositoryStore(self.db).owned(user_id, repository_id)
@@ -107,6 +114,12 @@ class AnswerService:
         )
         # Search's final source load starts another read transaction. Release it before generation.
         await self.db.commit()
+        if expected_source_id is not None and retrieved.source_index_id != expected_source_id:
+            raise AppError(
+                "answer_source_changed",
+                "The source index changed after submission. Submit a new run.",
+                409,
+            )
         result: GenerationResult | None = None
         if retrieved.context:
             payload = build_input(request.question, retrieved.context)

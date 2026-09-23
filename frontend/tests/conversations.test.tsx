@@ -46,6 +46,25 @@ const answer = {
   context_omitted: 0,
   duration_ms: 10,
 };
+const run = {
+  id: 'a1',
+  conversation_id: 'c1',
+  request_key: 'key',
+  question: 'What does check do?',
+  mode: 'keyword',
+  status: 'completed',
+  model: 'test',
+  source_index_id: 'source',
+  usage_state: 'recorded',
+  input_tokens: 100,
+  output_tokens: 30,
+  estimated_cost_usd: 0.0001,
+  error_code: null,
+  error_message: null,
+  created_at: '2026-09-23',
+  started_at: '2026-09-23',
+  finished_at: '2026-09-23',
+};
 const pair = [
   {
     id: 'm1',
@@ -89,16 +108,20 @@ describe('saved conversation UI', () => {
           created = true;
           return Promise.resolve(json(conversation, 201));
         }
-        if (path.endsWith('/messages') && options?.method === 'POST') {
-          expect(path).toBe('/api/conversations/c1/messages');
-          expect(JSON.parse(String(options.body))).toEqual({
+        if (path.endsWith('/runs') && options?.method === 'POST') {
+          expect(path).toBe('/api/conversations/c1/runs');
+          expect(JSON.parse(String(options.body))).toMatchObject({
             question: 'What does check do?',
             mode: 'keyword',
           });
           saved = true;
           calls++;
-          return Promise.resolve(json(answer, 201));
+          return Promise.resolve(
+            json({ ...run, status: 'queued', usage_state: 'not_started' }, 202),
+          );
         }
+        if (path.endsWith('/runs'))
+          return Promise.resolve(json({ items: saved ? [run] : [] }));
         if (path.endsWith('/messages'))
           return Promise.resolve(
             json({ items: saved ? pair : [], next_before: null }),
@@ -131,15 +154,13 @@ describe('saved conversation UI', () => {
     await screen.findByText(
       'No saved messages yet. Ask your first question below.',
     );
-    await screen.findByText(/test: estimated/);
+    await screen.findByText(/Model: test/);
     fireEvent.change(screen.getByLabelText('Question about the code'), {
       target: { value: 'What does check do?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask with sources' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Queue answer' }));
     expect(
-      await screen.findByText(
-        'Answer saved. You can reopen it in this conversation.',
-      ),
+      await screen.findByText('Saved in the conversation history above.'),
     ).toBeInTheDocument();
     expect(await screen.findByText('It returns True.')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'C1' })).toHaveLength(1);
@@ -173,9 +194,11 @@ describe('saved conversation UI', () => {
           json(
             path.endsWith('/answers')
               ? settings
-              : path.endsWith('/messages')
-                ? { items: [], next_before: null }
-                : { items: removed ? [] : [conversation] },
+              : path.endsWith('/runs')
+                ? { items: [] }
+                : path.endsWith('/messages')
+                  ? { items: [], next_before: null }
+                  : { items: removed ? [] : [conversation] },
           ),
         );
       }),
