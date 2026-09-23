@@ -14,6 +14,7 @@ from app.jobs.answer_config import config_hash
 from app.models import AnswerRun, Conversation
 from app.repositories.answer_run import RunStore
 from app.repositories.conversation import ConversationStore
+from app.repositories.conversation_history import snapshot_history
 from app.schemas.answer_run import RunList, RunRequest, RunResponse
 from app.services.search_preparation import PreparationService
 
@@ -92,6 +93,7 @@ class RunService:
                 Limit("answer-submit:day:" + str(user_id), 60, 86400),
             ]
         )
+        history = await snapshot_history(self.db, user_id, conversation_id, source.id)
         run = AnswerRun(
             conversation_id=conversation_id,
             request_key=data.request_key,
@@ -101,6 +103,7 @@ class RunService:
             source_index_id=source.id,
             config_hash=config_hash(self.settings),
             model=self.settings.answer_model,
+            history=[turn.model_dump(mode="json") for turn in history],
         )
         self.db.add(run)
         try:

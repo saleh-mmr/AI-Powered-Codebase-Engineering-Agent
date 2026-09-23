@@ -1,16 +1,16 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 7B, durable background answers.**
+engineering agent. **Current scope: Milestone 7C1, bounded conversation context.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
 Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
 semantic retrieval and opt-in grounded answers with validated source references are available.
-Conversations now save completed Q&A with source snapshots. Questions remain independent;
-named conversations now use durable background runs with reload recovery.
-Model history and streaming remain the next slice.
+Conversations save completed Q&A with source snapshots. Named conversations use durable
+background runs with reload recovery and bounded recent dialogue context. New claims
+still require current source evidence. Streaming and fuller usage receipts remain next.
 
-**Upgrading from Milestone 7A?** Follow [the Milestone 7B upgrade guide](docs/milestone-7b.md).
+**Upgrading from Milestone 7B?** Follow [the Milestone 7C1 upgrade guide](docs/milestone-7c1.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -55,7 +55,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0007_answer_runs (head)`.
+The migration should report `0008_answer_history (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -254,8 +254,11 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: local background-run acceptance, then streaming and bounded model history. Postponed: email
+Next: local follow-up acceptance, then streaming and fuller usage receipts. Postponed: email
 verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
 model conversation memory, streaming, complete usage receipts, agents, patches, and sandbox execution.
 
 Suggested commit: `feat(runs): add durable background answers and idempotent submission`
+
+Revision `0008_answer_history` adds a bounded JSON history snapshot to each run.
+See [ADR 0009](docs/decisions/0009-bounded-conversation-context.md).

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
 from app.core.errors import AppError
+from app.generation.history import HistoryTurn
 from app.jobs.answer_config import config_hash
 from app.models import AnswerRun, Conversation
 from app.repositories.conversation import ConversationStore
@@ -88,9 +89,10 @@ async def run_answer(
                     "Model configuration changed after submission. Submit a new run.",
                     409,
                 )
+            history = [HistoryTurn.model_validate(turn) for turn in run.history]
             await db.commit()
             answer = await build_answer(db).answer(
-                user_id, repository_id, request, expected_source_id=source_id
+                user_id, repository_id, request, expected_source_id=source_id, history=history
             )
             answer = answer.model_copy(update={"answer_id": run_id})
             # Lock conversation before run to match cascade-delete lock ordering.

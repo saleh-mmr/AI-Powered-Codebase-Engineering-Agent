@@ -52,6 +52,11 @@ export function GroundedAnswer({ answer }: { answer: Answer }) {
         {answer.context_omitted} chunks omitted. Source references were checked;
         factual accuracy still needs review.
       </p>
+      <p className="field-help">
+        Conversation context: {answer.history_turn_ids.length} prior turns ·{' '}
+        {answer.history_tokens} estimated history tokens. Earlier answers are
+        not citation evidence.
+      </p>
       {answer.evidence.map((source) => (
         <section
           key={source.citation_id}

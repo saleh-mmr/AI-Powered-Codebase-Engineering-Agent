@@ -113,7 +113,8 @@ streaming is claimed for 7A.
 
 ## Milestone 7B
 
-Implemented background execution slice; full-stack local acceptance remains pending.
+Implemented background execution slice; the user subsequently reported completion.
+Those local results were not independently rerun here.
 
 Verified here:
 
@@ -139,3 +140,32 @@ Follow milestone-7b.md for infrastructure tests and manual acceptance. Polling i
 implemented; SSE replay, conversation context and full per-call usage receipts
 remain for 7C. Cancellation fences publication but cannot guarantee refund or
 termination of an already accepted remote provider call.
+
+
+## Milestone 7C1
+
+Implemented bounded conversation-context slice; local full-stack acceptance pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (108 application modules).
+- Backend: 173 tests passed, seven infrastructure tests skipped; two existing
+  upstream Starlette/AnyIO deprecation warnings remain.
+- New tests cover frozen snapshots despite later message changes, idempotent replay,
+  source/conversation/abstention boundaries, malformed stored history rejection,
+  stateless compatibility, complete-pair budgets, current-evidence priority,
+  malicious dialogue remaining data, and citation IDs restricted to current evidence.
+- Frontend: TypeScript/ESLint/Prettier, 32 component tests and production build pass.
+  New checks verify old-snapshot defaults and visible history provenance.
+- Offline SQL generation reaches 0008_answer_history. The first invocation lacked
+  APP_DATABASE_URL; rerunning with a dummy offline URL succeeded without connecting.
+- Free fixture validation: original eight cases plus four follow-up cases, zero
+  provider calls. Prompt version is now grounded-v2. No live quality score is claimed.
+- The upgrade patch is checked and applied to the exact 7B archive; every applied
+  source file is compared with the packaged final source.
+
+Not executed here: real PostgreSQL migration/drift/locking, Redis/Celery roundtrip,
+Docker builds/startup, browser acceptance, actual CI or paid model evaluation.
+Mock tests prove application behavior, not resistance of the live model to prompt
+injection or factual accuracy. The 7C1 guide provides the remaining validation gates.
+Streaming/SSE replay and fuller per-call usage receipts remain 7C2/7C3.

@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { GroundedAnswer } from '../src/features/answers/GroundedAnswer';
+import { answerSchema } from '../src/features/answers/api';
 import { AnswerPanel } from '../src/features/answers/AnswerPanel';
 const settings = {
   enabled: true,
@@ -172,5 +174,32 @@ describe('grounded answer panel', () => {
     );
     await ask();
     expect(await screen.findByText('Request declined')).toBeInTheDocument();
+  });
+});
+
+describe('conversation context provenance', () => {
+  it('displays included history and safely reads answers saved before 7C1', () => {
+    const { rerender } = render(
+      <GroundedAnswer answer={answerSchema.parse(answer)} />,
+    );
+    expect(
+      screen.getByText(/Conversation context: 0 prior turns/),
+    ).toBeInTheDocument();
+    rerender(
+      <GroundedAnswer
+        answer={answerSchema.parse({
+          ...answer,
+          history_turn_ids: ['previous-turn'],
+          history_tokens: 64,
+          history_policy: 'recent-pairs-v1',
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/Conversation context: 1 prior turns/),
+    ).toHaveTextContent('64 estimated history tokens');
+    expect(
+      screen.getByText(/Earlier answers are not citation evidence/),
+    ).toBeInTheDocument();
   });
 });

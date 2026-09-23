@@ -39,6 +39,9 @@ export const answerSchema = z.object({
   context_tokens: z.number(),
   context_omitted: z.number(),
   duration_ms: z.number(),
+  history_turn_ids: z.array(z.string()).max(3).default([]),
+  history_tokens: z.number().nonnegative().default(0),
+  history_policy: z.string().default('none'),
 });
 export type Answer = z.infer<typeof answerSchema>;
 export async function getAnswerSettings(
