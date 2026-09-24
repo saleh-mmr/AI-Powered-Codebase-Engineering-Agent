@@ -8,6 +8,12 @@ const eventSchema = z.object({
   occurred_at: z.string(),
 });
 export type RunEvent = z.infer<typeof eventSchema>;
+const previewSchema = z.object({
+  run_id: z.string(),
+  revision: z.number().int().min(0).max(256),
+  text: z.string().max(16000), // JS counts UTF-16 units; server caps 8,000 code points.
+});
+export type AnswerPreview = z.infer<typeof previewSchema>;
 
 // Fetch supports our required same-origin header, AbortSignal and HTTP error handling.
 // Native EventSource cannot set that header. The wire protocol remains ordinary SSE.
@@ -17,9 +23,10 @@ export async function consumeEvents(
   onEvent: (event: RunEvent) => void,
   signal: AbortSignal,
   onConnected?: () => void,
+  onPreview?: (preview: AnswerPreview) => void,
 ): Promise<'complete' | 'reconnect'> {
   const response = await fetch(
-    `/api/answer-runs/${encodeURIComponent(runId)}/events`,
+    `/api/answer-runs/${encodeURIComponent(runId)}/events${onPreview ? '?preview=true' : ''}`,
     {
       credentials: 'same-origin',
       cache: 'no-store',
@@ -46,19 +53,21 @@ export async function consumeEvents(
   const decoder = new TextDecoder('utf-8', { fatal: true });
   let buffer = '';
   let bytes = 0;
+  let previewRevision = -1;
   try {
     while (true) {
       const part = await reader.read();
       if (part.done)
         throw new Error('Event stream ended without a control frame');
       bytes += part.value.byteLength;
-      if (bytes > 65536) throw new Error('Event stream exceeds limit');
+      if (bytes > 2 * 1024 * 1024)
+        throw new Error('Event stream exceeds limit');
       buffer += decoder.decode(part.value, { stream: true });
       buffer = buffer.replace(/\r\n/g, '\n');
-      if (buffer.length > 8192) throw new Error('Event frame exceeds limit');
       let end: number;
       while ((end = buffer.indexOf('\n\n')) >= 0) {
         const frame = buffer.slice(0, end);
+        if (frame.length > 65536) throw new Error('Event frame exceeds limit');
         buffer = buffer.slice(end + 2);
         let type = '';
         let id = '';
@@ -83,6 +92,14 @@ export async function consumeEvents(
             throw new Error('Event sequence gap');
           onEvent(event);
           cursor = event.sequence;
+        } else if (type === 'answer.preview') {
+          const preview = previewSchema.parse(JSON.parse(data.join('\n')));
+          if (id || preview.run_id !== runId)
+            throw new Error('Invalid preview identity');
+          if (preview.revision >= previewRevision) {
+            onPreview?.(preview);
+            previewRevision = preview.revision;
+          }
         } else if (type === 'stream.end') {
           return 'complete';
         } else if (type === 'stream.reconnect') {
@@ -99,6 +116,7 @@ export async function consumeEvents(
           throw new Error('Unknown stream event');
         }
       }
+      if (buffer.length > 65536) throw new Error('Event frame exceeds limit');
     }
   } finally {
     await reader.cancel().catch(() => undefined);

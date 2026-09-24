@@ -151,3 +151,27 @@ held-out repositories and ambiguous-reference cases remain evaluation work.
 The deterministic retrieval hint (current question plus the last selected user
 question, capped at 512 characters) is not semantic query rewriting and can add
 irrelevant terms when changing topics. Name symbols explicitly when needed.
+
+
+## Milestone 7C2B streaming transport evaluation
+
+The original eight-case and four follow-up fixtures are unchanged. The runner now
+accepts --stream with --allow-paid; its default remains buffered for baseline comparison.
+Reports label the transport and record first_delta_ms (null when no text delta arrives),
+final latency, usage, citation membership and human grading fields. First delta can
+contain JSON syntax; it is not the browser's first readable draft. Streaming does not
+make an extra model call per case. No paid evaluation was executed here.
+
+From repopilot-ai/backend, with existing provider settings configured, these deliberate
+paid commands produce separate reports on the same dataset:
+
+```bash
+uv run python -m app.evaluation.answers --allow-paid --dataset evaluation/answers/followups-v1/cases.json --output evaluation/answers/reports/followups-buffered.json
+uv run python -m app.evaluation.answers --allow-paid --stream --dataset evaluation/answers/followups-v1/cases.json --output evaluation/answers/reports/followups-streamed.json
+```
+
+Each command permits at most three provider requests and bypasses application quotas.
+Compare prompt/model/dataset hashes, provider errors, first-delta/final latency and
+reviewed correctness/groundedness. Do not expect identical wording from two model runs.
+Keep unknown usage distinct from zero. Transport mocks test failure behavior; they do
+not establish live model quality or API availability for your account.

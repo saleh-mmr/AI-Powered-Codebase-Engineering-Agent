@@ -1,36 +1,12 @@
 import json
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 
 from app.core.errors import AppError
-from app.generation.contracts import AnswerDraft, GenerationResult
-
-
-class Content(BaseModel):
-    type: str
-    text: str | None = None
-
-
-class OutputItem(BaseModel):
-    type: str
-    role: str | None = None
-    status: str | None = None
-    content: list[Content] = Field(default_factory=list)
-
-
-class Usage(BaseModel):
-    model_config = ConfigDict(strict=True)
-    input_tokens: int = Field(ge=0)
-    output_tokens: int = Field(ge=0)
-    total_tokens: int = Field(ge=0)
-
-
-class ResponsePayload(BaseModel):
-    status: str
-    model: str
-    output: list[OutputItem]
-    usage: Usage
+from app.generation.contracts import AnswerDraft, DeltaSink, GenerationResult
+from app.generation.openai_payload import validate_response
+from app.generation.openai_stream import consume_stream
 
 
 class OpenAIAnswers:
@@ -47,22 +23,7 @@ class OpenAIAnswers:
                 "POST",
                 "https://api.openai.com/v1/responses",
                 headers={"Authorization": "Bearer " + self.key},
-                json={
-                    "model": self.model,
-                    "instructions": instructions,
-                    "input": [{"role": "user", "content": evidence_input}],
-                    "store": False,
-                    "tools": [],
-                    "max_output_tokens": self.max_output_tokens,
-                    "text": {
-                        "format": {
-                            "type": "json_schema",
-                            "name": "repository_answer",
-                            "strict": True,
-                            "schema": AnswerDraft.model_json_schema(),
-                        }
-                    },
-                },
+                json=self.request_body(instructions, evidence_input),
                 timeout=30,
                 follow_redirects=False,
             ) as response:
@@ -81,36 +42,7 @@ class OpenAIAnswers:
                     body.extend(block)
                     if len(body) > 256 * 1024:
                         raise ValueError("Oversized model response")
-            data = ResponsePayload.model_validate(json.loads(body))
-            if data.status != "completed":
-                raise AppError(
-                    "model_incomplete", "Model output was incomplete. No answer was published.", 502
-                )
-            if data.model != self.model:
-                raise ValueError("Unexpected model snapshot")
-            if data.usage.total_tokens != data.usage.input_tokens + data.usage.output_tokens:
-                raise ValueError("Inconsistent usage")
-            if data.usage.output_tokens > self.max_output_tokens:
-                raise ValueError("Output token limit exceeded")
-            messages = [item for item in data.output if item.type == "message"]
-            if (
-                len(messages) != 1
-                or messages[0].role != "assistant"
-                or (messages[0].status != "completed")
-            ):
-                raise ValueError("Expected one completed assistant message")
-            content = messages[0].content
-            if len(content) != 1 or content[0].type not in {"output_text", "refusal"}:
-                raise ValueError("Unexpected output content")
-            refused = content[0].type == "refusal"
-            draft = None if refused else AnswerDraft.model_validate_json(content[0].text or "")
-            return GenerationResult(
-                model=data.model,
-                draft=draft,
-                refused=refused,
-                input_tokens=data.usage.input_tokens,
-                output_tokens=data.usage.output_tokens,
-            )
+            return validate_response(json.loads(body), self.model, self.max_output_tokens)
         except (httpx.HTTPError, TimeoutError):
             raise AppError(
                 "model_unavailable", "Model provider timed out or is unavailable. Retry later.", 503
@@ -120,4 +52,54 @@ class OpenAIAnswers:
                 "model_invalid",
                 "Model provider returned an invalid answer. Nothing was published.",
                 502,
+            ) from None
+
+    def request_body(self, instructions: str, evidence_input: str) -> dict[str, object]:
+        return {
+            "model": self.model,
+            "instructions": instructions,
+            "input": [{"role": "user", "content": evidence_input}],
+            "store": False,
+            "tools": [],
+            "max_output_tokens": self.max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "repository_answer",
+                    "strict": True,
+                    "schema": AnswerDraft.model_json_schema(),
+                }
+            },
+        }
+
+    async def generate_stream(
+        self, instructions: str, evidence_input: str, on_delta: DeltaSink
+    ) -> GenerationResult:
+        try:
+            async with self.client.stream(
+                "POST",
+                "https://api.openai.com/v1/responses",
+                headers={"Authorization": "Bearer " + self.key},
+                json={**self.request_body(instructions, evidence_input), "stream": True},
+                timeout=30,
+                follow_redirects=False,
+            ) as response:
+                if response.status_code == 429:
+                    raise AppError(
+                        "model_rate_limited", "Model provider is busy. Retry later.", 503
+                    )
+                if response.status_code != 200:
+                    raise AppError("model_provider_error", "Model streaming request failed.", 502)
+                if not response.headers.get("content-type", "").startswith("text/event-stream"):
+                    raise ValueError("Expected provider event stream")
+                return await consume_stream(response, self.model, self.max_output_tokens, on_delta)
+        except (httpx.HTTPError, TimeoutError):
+            raise AppError(
+                "model_unavailable",
+                "Model stream was interrupted. No automatic retry was made.",
+                503,
+            ) from None
+        except (ValidationError, ValueError, TypeError, UnicodeError):
+            raise AppError(
+                "model_invalid", "Model stream failed validation. No answer was published.", 502
             ) from None

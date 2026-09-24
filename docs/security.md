@@ -1,4 +1,4 @@
-# Security model — through Milestone 7C2A
+# Security model — through Milestone 7C2B
 
 Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
 are implemented. Repository code execution is not available. Public deployment
@@ -240,3 +240,37 @@ Old runs get one honest current-state baseline during migration, not invented hi
 Terminal streams end; reconnects use Last-Event-ID without placing credentials in URLs.
 The browser validates event identity, sequence, schema and bounded frame/stream size.
 The SSE channel is lifecycle-only. Token deltas and unvalidated answers are not emitted.
+
+
+## Milestone 7C2B provisional model output
+
+Streaming is opt-in at the read protocol via ?preview=true and automatic for the
+React background-answer view. The worker uses the provider's streaming capability
+when available; stateless/synchronous APIs still wait for their final result. No
+provider key, prompt, reasoning event, tool event or raw provider envelope is sent
+to the browser. Only selected claim/limitation strings from partial structured output
+form the draft. They are untrusted text, explicitly provisional and potentially wrong.
+The UI renders them as escaped plain text with no links/HTML execution or citations.
+Already displayed text cannot be recalled from a user's memory or screenshots.
+
+Preview fields never feed conversation history, retrieval or tools. A provider's
+completed result must match the accumulated text and pass the existing model, usage,
+structured-output and citation validations. Only then does normal atomic publication
+occur. Refusal/error/truncation/cancellation never promote a preview into an answer.
+Citation membership is still not proof of factual accuracy.
+
+Updates require the running state, matching lease token and unexpired lease. They
+are limited to one write per 250 ms, 256 revisions and 8,000 Unicode characters.
+Terminal state/event writes clear text in the same transaction. A crashed worker's
+text is hidden after lease expiry and cleared when dispatcher expiry runs; if the
+dispatcher is unavailable, data remains stored until that transition or deletion.
+Browser reconnects receive the latest snapshot, not a log of provisional tokens.
+Lifecycle sequence IDs stay unchanged. Polling that discovers terminal state also
+hides a stale draft if the stream is unavailable. Auth and ownership checks cover
+preview frames exactly as lifecycle events; snapshots do not enter logs.
+
+Bounded parsers reject oversized/malformed streams. Provider traffic is limited to
+2 MiB, 256 KiB per SSE frame, 64 KiB accumulated JSON and 12,000 events. Existing
+service/worker deadlines remain. There is no retry on an ambiguous provider failure.
+After cancellation, a subsequent preview write can stop local reading; the remote
+request may still complete and incur charges. Full per-call receipt accounting remains 7C3.

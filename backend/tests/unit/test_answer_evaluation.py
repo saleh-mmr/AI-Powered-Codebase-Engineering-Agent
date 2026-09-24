@@ -54,3 +54,17 @@ def test_followup_fixture_includes_wrong_history_injection_and_missing_evidence(
         "history-injection",
         "history-without-evidence",
     }
+
+
+def test_stream_evaluation_records_first_delta_without_extra_model_requests():
+    class StreamingProvider(Provider):
+        async def generate_stream(self, instructions, evidence_input, on_delta):
+            await on_delta('{"claims":[')
+            return await self.generate(instructions, evidence_input)
+
+    provider = StreamingProvider()
+    settings = Settings(database_url="postgresql+asyncpg://a:b@localhost/test")
+    result = asyncio.run(evaluate_case(load_cases()[0], provider, settings, stream=True))
+    assert result["transport"] == "stream" and result["first_delta_ms"] is not None
+    assert provider.calls == 1 and result["input_tokens"] == 100
+    assert result["human_groundedness"] is None

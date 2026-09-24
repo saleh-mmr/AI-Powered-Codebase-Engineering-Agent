@@ -4,6 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from time import perf_counter
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from app.core.errors import AppError
 from app.models import RunEvent
 from app.repositories.answer_run import RunStore
 from app.repositories.run_event import after
+from app.schemas.answer_preview import AnswerPreview
 from app.schemas.run_event import RunEventResponse
 from app.services.auth import AuthService
 
@@ -29,6 +31,7 @@ class EventPage:
     user_id: UUID
     events: list[RunEventResponse]
     terminal: bool
+    preview: AnswerPreview
 
 
 class RunStream:
@@ -53,7 +56,24 @@ class RunStream:
                     409,
                 )
             events = await after(db, run_id, cursor)
-            return EventPage(identity.user.id, events, run.status in TERMINAL)
+            terminal = run.status in TERMINAL or any(event.status in TERMINAL for event in events)
+            lease = run.lease_expires_at
+            live = (
+                not terminal
+                and run.status == "running"
+                and lease is not None
+                and (lease if lease.tzinfo else lease.replace(tzinfo=UTC)) > datetime.now(UTC)
+            )
+            return EventPage(
+                identity.user.id,
+                events,
+                terminal,
+                AnswerPreview(
+                    run_id=run.id,
+                    revision=run.preview_revision,
+                    text=run.preview_text if live else "",
+                ),
+            )
 
     async def frames(
         self,
@@ -61,8 +81,10 @@ class RunStream:
         run_id: UUID,
         cursor: int,
         disconnected: Callable[[], Awaitable[bool]],
+        include_preview: bool = False,
     ) -> AsyncIterator[str]:
         started = perf_counter()
+        previous_preview: tuple[int, str] | None = None
         try:
             for tick in range(STREAM_POLLS):
                 if await disconnected():
@@ -72,6 +94,10 @@ class RunStream:
                 for event in page.events:
                     cursor = event.sequence
                     yield f"id: {cursor}\nevent: run.status\ndata: {event.model_dump_json()}\n\n"
+                current_preview = (page.preview.revision, page.preview.text)
+                if include_preview and current_preview != previous_preview:
+                    yield f"event: answer.preview\ndata: {page.preview.model_dump_json()}\n\n"
+                    previous_preview = current_preview
                 if page.terminal:
                     yield "event: stream.end\ndata: {}\n\n"
                     return

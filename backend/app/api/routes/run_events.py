@@ -24,6 +24,7 @@ async def events(
     request: Request,
     after: Annotated[int, Query(ge=0, le=3)] = 0,
     last_event_id: Annotated[str | None, Header(max_length=10)] = None,
+    preview: bool = False,
 ) -> StreamingResponse:
     # Custom header requires CORS preflight cross-origin; the app enables no CORS.
     if request.headers.get("x-repopilot-request") != "1":
@@ -49,7 +50,7 @@ async def events(
         ]
     )
     return StreamingResponse(
-        service.frames(raw, run_id, cursor, request.is_disconnected),
+        service.frames(raw, run_id, cursor, request.is_disconnected, include_preview=preview),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )

@@ -10,6 +10,7 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.generation.history import HistoryTurn
 from app.jobs.answer_config import config_hash
+from app.jobs.answer_preview import PreviewWriter
 from app.models import AnswerRun, Conversation
 from app.repositories.conversation import ConversationStore
 from app.repositories.run_event import append_state
@@ -96,8 +97,14 @@ async def run_answer(
                 )
             history = [HistoryTurn.model_validate(turn) for turn in run.history]
             await db.commit()
+            preview = PreviewWriter(factory, run_id, token)
             answer = await build_answer(db).answer(
-                user_id, repository_id, request, expected_source_id=source_id, history=history
+                user_id,
+                repository_id,
+                request,
+                expected_source_id=source_id,
+                history=history,
+                on_delta=preview.delta,
             )
             answer = answer.model_copy(update={"answer_id": run_id})
             # Lock conversation before run to match cascade-delete lock ordering.

@@ -12,6 +12,8 @@ async def append_state(db: AsyncSession, run_id: UUID) -> None:
     run = await db.get(AnswerRun, run_id, populate_existing=True)
     if run is None:
         return
+    if run.status in {"completed", "failed", "cancelled"}:
+        run.preview_text = ""
     sequence = await db.scalar(select(func.max(RunEvent.sequence)).where(RunEvent.run_id == run_id))
     db.add(RunEvent(run_id=run_id, sequence=(sequence or 0) + 1, status=run.status))
     await db.flush()

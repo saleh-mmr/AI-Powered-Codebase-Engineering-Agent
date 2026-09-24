@@ -645,3 +645,16 @@ footer > span {
   border: 1px solid #c6cdd4;
   border-radius: 0.5rem;
 }
+
+.answer-preview {
+  border: 1px dashed #64748b;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+.answer-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+}

@@ -36,6 +36,10 @@ class AnswerRun(Base):
             "status IN ('queued','running','completed','failed','cancelled')",
             name="ck_answer_run_status",
         ),
+        CheckConstraint("length(preview_text) <= 8000", name="ck_run_preview_length"),
+        CheckConstraint(
+            "preview_revision >= 0 AND preview_revision <= 256", name="ck_run_preview_revision"
+        ),
         CheckConstraint("mode IN ('keyword','hybrid')", name="ck_answer_run_mode"),
         CheckConstraint(
             "usage_state IN ('not_started','unknown','recorded')", name="ck_answer_run_usage"
@@ -53,6 +57,8 @@ class AnswerRun(Base):
     request_key: Mapped[UUID] = mapped_column(nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64))
     question: Mapped[str] = mapped_column(Text)
+    preview_text: Mapped[str] = mapped_column(Text, server_default="")
+    preview_revision: Mapped[int] = mapped_column(Integer, server_default="0")
     history: Mapped[list[dict[str, object]]] = mapped_column(JSON, server_default="[]")
     mode: Mapped[str] = mapped_column(String(20))
     source_index_id: Mapped[UUID] = mapped_column(nullable=False)

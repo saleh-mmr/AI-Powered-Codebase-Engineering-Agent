@@ -4,16 +4,20 @@ import { consumeEvents, type RunEvent } from './events';
 
 interface Props {
   runId: string;
+  runStatus?: string;
   onChanged: () => void;
   onExpired: () => void;
 }
 
-export function RunTimeline({ runId, onChanged, onExpired }: Props) {
+export function RunTimeline({ runId, runStatus, onChanged, onExpired }: Props) {
+  const [preview, setPreview] = useState('');
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [connection, setConnection] = useState('Connecting to live updates…');
   useEffect(() => {
     const controller = new AbortController();
     let cursor = 0;
+    let terminalSeen = false;
+    let previewRevision = -1;
     let failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     async function connect() {
@@ -25,6 +29,10 @@ export function RunTimeline({ runId, onChanged, onExpired }: Props) {
           (event) => {
             if (controller.signal.aborted) return;
             cursor = event.sequence;
+            if (['completed', 'failed', 'cancelled'].includes(event.status)) {
+              terminalSeen = true;
+              setPreview('');
+            }
             failures = 0;
             setEvents((previous) =>
               [
@@ -40,15 +48,27 @@ export function RunTimeline({ runId, onChanged, onExpired }: Props) {
             if (!controller.signal.aborted)
               setConnection('Live updates connected.');
           },
+          (value) => {
+            if (
+              !controller.signal.aborted &&
+              !terminalSeen &&
+              value.revision >= previewRevision
+            ) {
+              previewRevision = value.revision;
+              setPreview(value.text);
+            }
+          },
         );
         if (controller.signal.aborted) return;
         if (result === 'complete') {
+          setPreview('');
           setConnection('Timeline complete.');
           return;
         }
         failures = 0;
       } catch (reason) {
         if (controller.signal.aborted) return;
+        setPreview('');
         if (reason instanceof ApiError && reason.status === 401) {
           onExpired();
           return;
@@ -88,6 +108,16 @@ export function RunTimeline({ runId, onChanged, onExpired }: Props) {
       <p className="field-help" role="status">
         {connection}
       </p>
+      {preview && (!runStatus || runStatus === 'running') && (
+        <section className="answer-preview" aria-label="Provisional answer">
+          <h5>Draft — not yet validated</h5>
+          <p>
+            This text may change or be discarded. Source links appear only after
+            validation.
+          </p>
+          <pre aria-label="Provisional answer text">{preview}</pre>
+        </section>
+      )}
       <ol>
         {events.map((event) => (
           <li key={event.sequence}>

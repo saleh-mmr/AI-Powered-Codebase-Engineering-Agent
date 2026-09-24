@@ -11,6 +11,7 @@ def config_hash(settings: Settings) -> str:
     # Only public model configuration, never API keys or database credentials.
     configuration = {
         "model": settings.answer_model,
+        "generation_transport": "responses-stream-v1",
         "output_cap": settings.answer_max_output_tokens,
         "input_price": settings.answer_input_price_per_million,
         "output_price": settings.answer_output_price_per_million,

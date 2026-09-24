@@ -174,7 +174,8 @@ Streaming/SSE replay and fuller per-call usage receipts remain 7C2/7C3.
 
 ## Milestone 7C2A
 
-Implemented lifecycle streaming/replay slice; full-stack local acceptance pending.
+Implemented lifecycle streaming/replay slice; the user subsequently reported local
+completion. Those results were not independently rerun here.
 
 Verified here:
 
@@ -199,3 +200,40 @@ Not executed here: Docker startup/builds, real PostgreSQL migration/drift/lockin
 Redis/Celery checks, browser/proxy acceptance, actual CI or deployment load tests.
 No paid calls were made. Provider behavior/prompts are unchanged. These are real
 lifecycle events, not provider token streaming; 7C2B remains before 7C3 receipts.
+
+
+## Milestone 7C2B
+
+Implemented provider streaming/provisional-display slice; local full-stack and live
+provider acceptance remain pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (118 application modules).
+- Backend: 201 tests pass, seven infrastructure tests skip; the two existing
+  upstream Starlette/AnyIO deprecation warnings remain.
+- New provider tests use fragmented mocked SSE and check strict request flags,
+  output identity/order, exact final-text matching, usage validation, truncated/
+  oversized/malformed streams, refusal/reasoning suppression and no automatic retry.
+- Preview tests cover partial-text projection, bounds/control characters, live reads,
+  terminal clearing, invalid citations, cancellation fences, lease expiry, write
+  throttling and reconnect snapshots without advancing lifecycle cursors/model calls.
+- Existing buffered generation and conversation/run regressions pass.
+- Frontend: TypeScript/ESLint/Prettier, 48 tests and production build pass.
+  A formatting issue in the new test file was corrected before the final check.
+- New UI tests verify snapshot replacement/order, identity/size checks, escaped HTML,
+  absent source links, terminal clearing and hiding stale drafts via fallback polling.
+- Offline PostgreSQL SQL reaches 0010_answer_preview with defaults and length/revision
+  constraints. No actual PostgreSQL migration/drift/locking pass is claimed.
+- Both fixed-context datasets validate (8 and 4 cases) with zero provider calls.
+  The evaluation runner's stream mode and first-delta recording are tested with a fake.
+- The exact upgrade patch is checked and applied to the 7C2A archive, then all applied
+  source files are compared against final packaged source.
+
+Not executed here: Docker startup/builds, real PostgreSQL/Redis/Celery integration,
+manual browser/proxy streaming, actual CI, real provider calls or live model-quality
+comparisons. Official OpenAI streaming documentation was checked; account/model
+availability and live transport compatibility still need the documented acceptance.
+No paid calls were made. UI snapshots are coalesced through one-second polling, so
+no sub-second latency or individual-token display guarantee is claimed.
+Full per-call usage receipts remain 7C3.

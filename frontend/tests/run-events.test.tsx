@@ -44,7 +44,7 @@ describe('SSE transport', () => {
     frame(2),
     frame(1).replace('r1', 'other'),
     'event: run.status\ndata: {}\n\n',
-    'x'.repeat(9000),
+    'x'.repeat(66000),
   ])('rejects a malformed or out-of-sequence frame', async (text) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(stream([text])));
     await expect(

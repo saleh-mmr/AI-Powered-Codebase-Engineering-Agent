@@ -16,7 +16,12 @@ from app.generation.context import (
     build_context,
     validate_citations,
 )
-from app.generation.contracts import AnswerProvider, GenerationResult
+from app.generation.contracts import (
+    AnswerProvider,
+    DeltaSink,
+    GenerationResult,
+    StreamingAnswerProvider,
+)
 from app.generation.history import (
     HISTORY_POLICY,
     HistoryTurn,
@@ -62,6 +67,7 @@ class AnswerService:
         request: AnswerRequest,
         expected_source_id: UUID | None = None,
         history: list[HistoryTurn] | None = None,
+        on_delta: DeltaSink | None = None,
     ) -> AnswerResponse:
         answer_id = uuid4()
         started = perf_counter()
@@ -75,6 +81,7 @@ class AnswerService:
                     request,
                     expected_source_id,
                     bounded_history(history or []),
+                    on_delta,
                 )
         except TimeoutError:
             logger.warning(
@@ -103,6 +110,7 @@ class AnswerService:
         request: AnswerRequest,
         expected_source_id: UUID | None,
         history: list[HistoryTurn],
+        on_delta: DeltaSink | None,
     ) -> AnswerResponse:
         # Authorize before checking configuration, using quotas, or sending any data externally.
         await RepositoryStore(self.db).owned(user_id, repository_id)
@@ -147,7 +155,10 @@ class AnswerService:
                     "result_count": len(retrieved.context),
                 },
             )
-            generated = await self.provider.generate(INSTRUCTIONS, payload)
+            if on_delta is not None and isinstance(self.provider, StreamingAnswerProvider):
+                generated = await self.provider.generate_stream(INSTRUCTIONS, payload, on_delta)
+            else:
+                generated = await self.provider.generate(INSTRUCTIONS, payload)
             # Revalidate the provider boundary even when another adapter is introduced later.
             result = GenerationResult.model_validate(generated.model_dump())
             cost = (
