@@ -293,3 +293,7 @@ describe('saved conversation UI', () => {
     expect(screen.queryByText('Authentication')).toBeNull();
   });
 });
+
+vi.mock('../src/features/runs/RunTimeline', () => ({
+  RunTimeline: () => null,
+}));

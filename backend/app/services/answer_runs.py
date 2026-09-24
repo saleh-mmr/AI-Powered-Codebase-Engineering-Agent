@@ -15,6 +15,7 @@ from app.models import AnswerRun, Conversation
 from app.repositories.answer_run import RunStore
 from app.repositories.conversation import ConversationStore
 from app.repositories.conversation_history import snapshot_history
+from app.repositories.run_event import append_state
 from app.schemas.answer_run import RunList, RunRequest, RunResponse
 from app.services.search_preparation import PreparationService
 
@@ -108,6 +109,7 @@ class RunService:
         self.db.add(run)
         try:
             await self.db.flush()
+            await append_state(self.db, run.id)
             response = RunResponse.model_validate(run)
             await self.db.commit()
             return response, True
@@ -147,6 +149,7 @@ class RunService:
             raise AppError(
                 "answer_terminal", "This run has already finished. Refresh its status.", 409
             )
+        await append_state(self.db, run_id)
         await self.db.commit()
         self.db.expire_all()
         return await self.get(user_id, run_id)

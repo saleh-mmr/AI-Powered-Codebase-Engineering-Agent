@@ -18,6 +18,7 @@ from app.api.routes.conversations import router as conversation_router
 from app.api.routes.health import router
 from app.api.routes.indexes import router as index_router
 from app.api.routes.repositories import router as repository_router
+from app.api.routes.run_events import router as run_event_router
 from app.api.routes.search import router as search_router
 from app.auth.passwords import hash_password
 from app.auth.throttle import AuthThrottle
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(search_router)
     app.include_router(answer_router)
     app.include_router(run_router)
+    app.include_router(run_event_router)
     app.include_router(conversation_router)
 
     @app.middleware("http")

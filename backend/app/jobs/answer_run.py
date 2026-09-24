@@ -12,6 +12,7 @@ from app.generation.history import HistoryTurn
 from app.jobs.answer_config import config_hash
 from app.models import AnswerRun, Conversation
 from app.repositories.conversation import ConversationStore
+from app.repositories.run_event import append_state
 from app.schemas.answer import AnswerRequest
 from app.services.answers import AnswerService
 
@@ -22,7 +23,7 @@ async def fail_run(
     factory: async_sessionmaker[AsyncSession], run_id: UUID, token: UUID, code: str, message: str
 ) -> None:
     async with factory() as db:
-        await db.execute(
+        changed = await db.scalar(
             update(AnswerRun)
             .where(
                 AnswerRun.id == run_id,
@@ -37,7 +38,10 @@ async def fail_run(
                 error_code=code,
                 error_message=message,
             )
+            .returning(AnswerRun.id)
         )
+        if changed is not None:
+            await append_state(db, run_id)
         await db.commit()
 
 
@@ -67,6 +71,7 @@ async def run_answer(
         )
         if claimed is None:
             return  # Duplicate broker delivery is a no-op, including completed/expired runs.
+        await append_state(db, run_id)
         await db.commit()
     try:
         async with factory() as db:
@@ -124,7 +129,8 @@ async def run_answer(
             if published is None:
                 return  # Cancellation, expiry or deletion fences late results.
             await ConversationStore(db).append_pair(user_id, conversation_id, question, answer)
-            await db.commit()  # Status, usage and both messages publish atomically.
+            await append_state(db, run_id)
+            await db.commit()  # State, event, usage and both messages publish atomically.
         logger.info("answer_run_completed", extra={"job_id": str(run_id)})
     except Exception as exc:
         code = exc.code if isinstance(exc, AppError) else "answer_worker_error"
