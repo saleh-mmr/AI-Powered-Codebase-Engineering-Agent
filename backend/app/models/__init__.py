@@ -5,6 +5,7 @@ from app.models.import_job import ImportJob
 from app.models.repository import Repository
 from app.models.repository_file import RepositoryFile
 from app.models.repository_index import RepositoryIndex
+from app.models.run_event import RunEvent
 from app.models.search import SearchDocument
 from app.models.search_index import SearchIndex
 from app.models.session import Session
@@ -14,6 +15,7 @@ __all__ = [
     "Conversation",
     "Message",
     "AnswerRun",
+    "RunEvent",
     "User",
     "Session",
     "Repository",

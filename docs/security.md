@@ -1,4 +1,4 @@
-# Security model — through Milestone 7C1
+# Security model — through Milestone 7C2A
 
 Users, sessions, bounded imports, indexing, optional embeddings and grounded answers
 are implemented. Repository code execution is not available. Public deployment
@@ -212,3 +212,31 @@ The external-model disclosure now includes selected previous turns. There is no 
 model call; larger generation input can cost more. Temporary and legacy synchronous
 questions keep empty history. New configuration hashes fence old queued runs across
 this prompt/policy change. Do not requeue paid work automatically during upgrade.
+
+
+## Milestone 7C2A lifecycle event streaming
+
+Events contain only run ID, sequence, status and timestamp; no source code, questions,
+credentials, prompts or hidden reasoning. The session cookie authenticates stream
+requests, with an application header preventing simple cross-origin browser requests.
+No CORS access is enabled. Read-only streams do not need the write CSRF token. Session
+validity and repository/conversation ownership are rechecked on each one-second poll.
+Already transmitted bytes cannot be recalled; logout/deletion stops subsequent polls.
+No database session/connection remains open while awaiting the client or sleeping.
+
+Connections last at most approximately 25 seconds of normal polling, with heartbeat
+comments every five polls. Network/DB delays can extend this; browser requests abort
+at 35 seconds. Redis limits starts to 30/minute and 300/hour per user, independent of
+model-generation quotas. This is an admission rate limit, not a global concurrency
+semaphore or deployment DDoS defense. Each stream performs bounded DB reads per poll;
+production load should be measured before replacing polling with shared notifications.
+Only one latest-run timeline per mounted composer streams; 10-second status polling
+continues as fallback. Disconnecting never cancels or resubmits paid generation.
+
+Event rows commit atomically with transitions. Completion also commits its messages
+and usage in that transaction. A unique (run_id, sequence) primary key orders replay;
+state guards suppress duplicate delivery. Rows cascade on run/conversation deletion.
+Old runs get one honest current-state baseline during migration, not invented history.
+Terminal streams end; reconnects use Last-Event-ID without placing credentials in URLs.
+The browser validates event identity, sequence, schema and bounded frame/stream size.
+The SSE channel is lifecycle-only. Token deltas and unvalidated answers are not emitted.

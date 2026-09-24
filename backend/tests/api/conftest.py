@@ -41,6 +41,7 @@ def auth_client(tmp_path: Path) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = database
     app.state.test_factory = factory
     with TestClient(app, base_url="http://localhost:3000") as client:
+        app.state.session_factory = factory
         app.state.rate_limiter = MemoryRateLimiter()
         app.state.auth_throttle = AuthThrottle(app.state.rate_limiter)
         yield client

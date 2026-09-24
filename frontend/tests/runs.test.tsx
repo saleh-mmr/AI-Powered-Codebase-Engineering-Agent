@@ -174,3 +174,7 @@ describe('durable answer UI', () => {
     expect(done).toHaveBeenCalledOnce();
   });
 });
+
+vi.mock('../src/features/runs/RunTimeline', () => ({
+  RunTimeline: () => null,
+}));

@@ -144,7 +144,8 @@ termination of an already accepted remote provider call.
 
 ## Milestone 7C1
 
-Implemented bounded conversation-context slice; local full-stack acceptance pending.
+Implemented bounded conversation-context slice; the user subsequently reported
+completion. Those local results were not independently rerun here.
 
 Verified here:
 
@@ -169,3 +170,32 @@ Docker builds/startup, browser acceptance, actual CI or paid model evaluation.
 Mock tests prove application behavior, not resistance of the live model to prompt
 injection or factual accuracy. The 7C1 guide provides the remaining validation gates.
 Streaming/SSE replay and fuller per-call usage receipts remain 7C2/7C3.
+
+
+## Milestone 7C2A
+
+Implemented lifecycle streaming/replay slice; full-stack local acceptance pending.
+
+Verified here:
+
+- Ruff lint/format and strict mypy pass (113 application modules).
+- Backend: 182 tests pass, seven infrastructure tests skip. Two pre-existing upstream
+  Starlette/AnyIO deprecation warnings remain.
+- Tests cover ordered replay and Last-Event-ID precedence, duplicate worker suppression,
+  queued cancellation and failed terminal events, auth/owner/header/cursor checks,
+  heartbeat/reconnect, revocation/deletion/disconnect, rate limiting, and atomic rollback
+  of messages/completion when event insertion fails. Cascade deletion is checked.
+- Portable migration test verifies one current-state baseline per old run and that
+  downgrade preserves parent run records. Offline PostgreSQL SQL reaches 0009_run_events.
+- Frontend: TypeScript/ESLint/Prettier, 41 tests and production build pass.
+- New tests cover fragmented CRLF, deduplication, cursor/identity/schema failures,
+  frame bounds, interrupted EOF, in-stream auth expiry, reconnect without submitting
+  generation and abort on unmount. The reconnect test initially stalled because its
+  fake clock was not advanced inside React act; the corrected test passes.
+- Upgrade patch is checked/applied to the exact 7C1 archive and applied source is
+  compared against the final packaged files.
+
+Not executed here: Docker startup/builds, real PostgreSQL migration/drift/locking,
+Redis/Celery checks, browser/proxy acceptance, actual CI or deployment load tests.
+No paid calls were made. Provider behavior/prompts are unchanged. These are real
+lifecycle events, not provider token streaming; 7C2B remains before 7C3 receipts.

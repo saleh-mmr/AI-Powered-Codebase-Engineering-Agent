@@ -1,4 +1,12 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { RunTimeline } from './RunTimeline';
 import { ApiError } from '../../lib/api/http';
 import { getAnswerSettings, type AnswerSettings } from '../answers/api';
 import type { SearchMode } from '../search/api';
@@ -35,6 +43,10 @@ export function RunComposer({
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const completed = useRef(new Set<string>());
+  const refreshFromEvent = useCallback(
+    () => setRevision((value) => value + 1),
+    [],
+  );
   const active = runs.some(
     (run) => run.status === 'queued' || run.status === 'running',
   );
@@ -67,7 +79,7 @@ export function RunComposer({
         delay = next.some(
           (run) => run.status === 'queued' || run.status === 'running',
         )
-          ? 2000
+          ? 10000
           : 10000;
       } catch (reason) {
         if (controller.signal.aborted) return;
@@ -234,6 +246,14 @@ export function RunComposer({
       {error && <p role="alert">{error}</p>}
       {!loading && runs.length === 0 && !statusError && (
         <p>No answer runs yet.</p>
+      )}
+      {runs[0] && (
+        <RunTimeline
+          key={runs[0].id}
+          runId={runs[0].id}
+          onChanged={refreshFromEvent}
+          onExpired={onExpired}
+        />
       )}
       <ol className="answer-runs">
         {runs.map((run) => (
