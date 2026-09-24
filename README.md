@@ -1,7 +1,7 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 7C2A, durable live run timeline.**
+engineering agent. **Current scope: Milestone 7C2B, provider streaming and provisional answers.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
 Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
@@ -9,9 +9,10 @@ semantic retrieval and opt-in grounded answers with validated source references 
 Conversations save completed Q&A with source snapshots. Named conversations use durable
 background runs with reload recovery and bounded recent dialogue context. New claims
 still require current source evidence. Run-state events now stream over SSE with replay.
-Provider token streaming and fuller usage receipts remain next.
+Background answers now stream provisional text. Only completed, validated responses
+enter saved history. Fuller usage receipts and final MVP acceptance remain next.
 
-**Upgrading from Milestone 7C1?** Follow [the Milestone 7C2A upgrade guide](docs/milestone-7c2a.md).
+**Upgrading from Milestone 7C2A?** Follow [the Milestone 7C2B upgrade guide](docs/milestone-7c2b.md).
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -56,7 +57,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0009_run_events (head)`.
+The migration should report `0010_answer_preview (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery
@@ -255,7 +256,7 @@ shared throttling, versioned Python indexing, symbol/chunk inspection, hybrid re
 Compose, tests, and CI definition. See `docs/validation.md` for actual
 verification results and remaining gates.
 
-Next: local SSE acceptance, then provider token streaming and fuller usage receipts. Postponed: email
+Next: local streaming acceptance, then fuller usage receipts and final MVP acceptance. Postponed: email
 verification/recovery, OAuth/private repositories, successful-import refresh, local model adapters, learned reranking,
 model conversation memory, streaming, complete usage receipts, agents, patches, and sandbox execution.
 
@@ -266,3 +267,6 @@ See [ADR 0009](docs/decisions/0009-bounded-conversation-context.md).
 
 Revision `0009_run_events` adds an atomic lifecycle event log and backfills one
 current-state entry per existing run. See [ADR 0010](docs/decisions/0010-durable-run-events.md).
+
+Revision `0010_answer_preview` adds bounded temporary preview fields to runs.
+See [ADR 0011](docs/decisions/0011-provisional-answer-streaming.md).

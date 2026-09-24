@@ -1,4 +1,5 @@
-from typing import Literal, Protocol
+from collections.abc import Awaitable, Callable
+from typing import Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -46,3 +47,13 @@ class AnswerProvider(Protocol):
     def model(self) -> str: ...
 
     async def generate(self, instructions: str, evidence_input: str) -> GenerationResult: ...
+
+
+DeltaSink = Callable[[str], Awaitable[None]]
+
+
+@runtime_checkable
+class StreamingAnswerProvider(AnswerProvider, Protocol):
+    async def generate_stream(
+        self, instructions: str, evidence_input: str, on_delta: DeltaSink
+    ) -> GenerationResult: ...

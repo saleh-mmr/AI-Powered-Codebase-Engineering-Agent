@@ -251,6 +251,7 @@ export function RunComposer({
         <RunTimeline
           key={runs[0].id}
           runId={runs[0].id}
+          runStatus={runs[0].status}
           onChanged={refreshFromEvent}
           onExpired={onExpired}
         />

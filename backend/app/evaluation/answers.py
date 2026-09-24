@@ -21,7 +21,7 @@ from app.generation.context import (
     build_context,
     validate_citations,
 )
-from app.generation.contracts import AnswerProvider
+from app.generation.contracts import AnswerProvider, StreamingAnswerProvider
 from app.generation.factory import create_answer_provider
 from app.generation.history import HISTORY_POLICY, HistoryTurn, history_tokens
 from app.schemas.answer import AnswerRequest
@@ -56,7 +56,7 @@ def load_cases(dataset: Path = DATASET) -> list[Case]:
 
 
 async def evaluate_case(
-    case: Case, provider: AnswerProvider, settings: Settings
+    case: Case, provider: AnswerProvider, settings: Settings, stream: bool = False
 ) -> dict[str, object]:
     started = perf_counter()
     row: dict[str, object] = {
@@ -76,6 +76,8 @@ async def evaluate_case(
         "estimated_cost_usd": 0.0,
         "citation_links_valid": None,
         "usage_known": True,
+        "transport": "stream" if stream else "buffered",
+        "first_delta_ms": None,
     }
     try:
         if not case.evidence:
@@ -91,8 +93,18 @@ async def evaluate_case(
             payload, included = build_context(case.question, case.evidence, case.history)
             row["included_history"] = [turn.model_dump(mode="json") for turn in included]
             row["history_tokens"] = history_tokens(included)
+
+            async def observe(delta: str) -> None:
+                if delta and row["first_delta_ms"] is None:
+                    row["first_delta_ms"] = round((perf_counter() - started) * 1000, 2)
+
             async with asyncio.timeout(35):
-                result = await provider.generate(INSTRUCTIONS, payload)
+                if stream:
+                    if not isinstance(provider, StreamingAnswerProvider):
+                        raise ValueError("Provider does not support streaming evaluation")
+                    result = await provider.generate_stream(INSTRUCTIONS, payload, observe)
+                else:
+                    result = await provider.generate(INSTRUCTIONS, payload)
             row.update(
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
@@ -127,17 +139,20 @@ async def evaluate_case(
     return row
 
 
-async def run_evaluation(settings: Settings, dataset: Path = DATASET) -> dict[str, object]:
+async def run_evaluation(
+    settings: Settings, dataset: Path = DATASET, stream: bool = False
+) -> dict[str, object]:
     cases = await asyncio.to_thread(load_cases, dataset)
     dataset_hash = sha256(await asyncio.to_thread(dataset.read_bytes)).hexdigest()
     async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
         provider = create_answer_provider(settings, client)
         if provider is None:
             raise ValueError("Enable APP_ANSWERS_ENABLED for a paid evaluation")
-        rows = [await evaluate_case(case, provider, settings) for case in cases]
+        rows = [await evaluate_case(case, provider, settings, stream) for case in cases]
     return {
         "dataset": str(dataset),
         "history_policy": HISTORY_POLICY,
+        "transport": "stream" if stream else "buffered",
         "dataset_sha256": dataset_hash,
         "prompt_version": PROMPT_VERSION,
         "prompt_hash": PROMPT_HASH,
@@ -166,6 +181,7 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, default=Path("evaluation/answers/reports/run.json"))
     parser.add_argument("--dataset", type=Path, default=DATASET)
+    parser.add_argument("--stream", action="store_true", help="Evaluate the streaming adapter")
     args = parser.parse_args()
     dataset = args.dataset
     if args.check:
@@ -183,7 +199,7 @@ def main() -> None:
     settings = Settings(
         database_url="postgresql+asyncpg://evaluation:unused@localhost/evaluation_test"
     )
-    result = asyncio.run(run_evaluation(settings, dataset))
+    result = asyncio.run(run_evaluation(settings, dataset, args.stream))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(f"Wrote {args.output}; review per-case answers and fill human grades.")
