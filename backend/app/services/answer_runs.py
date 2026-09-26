@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from hashlib import sha256
 from uuid import UUID
 
@@ -11,12 +12,13 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.rate_limits import Limit, RateLimiter
 from app.jobs.answer_config import config_hash
-from app.models import AnswerRun, Conversation
+from app.models import AnswerRun, Conversation, UsageReceipt
 from app.repositories.answer_run import RunStore
 from app.repositories.conversation import ConversationStore
 from app.repositories.conversation_history import snapshot_history
 from app.repositories.run_event import append_state
 from app.schemas.answer_run import RunList, RunRequest, RunResponse
+from app.schemas.usage_receipt import ReceiptResponse, RunUsage
 from app.services.search_preparation import PreparationService
 
 
@@ -35,6 +37,24 @@ class RunService:
 
     async def get(self, user_id: UUID, run_id: UUID) -> RunResponse:
         return RunResponse.model_validate(await self.store.owned(user_id, run_id))
+
+    async def usage(self, user_id: UUID, run_id: UUID) -> RunUsage:
+        run = await self.store.owned(user_id, run_id)
+        rows = list(
+            (
+                await self.db.scalars(
+                    select(UsageReceipt)
+                    .where(UsageReceipt.run_id == run_id)
+                    .order_by(UsageReceipt.started_at, UsageReceipt.id)
+                )
+            ).all()
+        )
+        return RunUsage(
+            tracked=run.receipt_version == 1,
+            items=[ReceiptResponse.model_validate(row) for row in rows],
+            known_cost_usd=sum((row.estimated_cost_usd or Decimal(0) for row in rows), Decimal(0)),
+            unknown_calls=sum(row.input_tokens is None for row in rows),
+        )
 
     async def submit(
         self, user_id: UUID, conversation_id: UUID, data: RunRequest
@@ -104,6 +124,7 @@ class RunService:
             source_index_id=source.id,
             config_hash=config_hash(self.settings),
             model=self.settings.answer_model,
+            receipt_version=1,
             history=[turn.model_dump(mode="json") for turn in history],
         )
         self.db.add(run)

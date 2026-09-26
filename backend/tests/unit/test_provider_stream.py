@@ -145,3 +145,31 @@ def test_partial_projection_is_text_only_bounded_and_not_final_validation():
     assert preview_text("not json") == ""
     assert len(preview_text(json.dumps({"claims": [{"text": "a" * 1800}] * 8}))) == 8000
     assert "\x00" not in preview_text('{"claims":[{"text":"a\\u0000b"}]}')
+
+
+@pytest.mark.parametrize("failure", ["schema", "mismatch", "incomplete"])
+def test_rejected_stream_keeps_valid_reported_usage(failure):
+    from app.core.provider_usage import ProviderUsageError
+
+    items = events()
+    if failure == "schema":
+        items[-1]["response"]["output"][0]["content"][0]["text"] = "invalid json"
+    elif failure == "mismatch":
+        items[1]["delta"] = "wrong text"
+    else:
+        items[-1]["type"] = "response.incomplete"
+        items[-1]["response"]["status"] = "incomplete"
+    with pytest.raises(ProviderUsageError) as caught:
+        run(items)
+    assert caught.value.input_tokens == 100
+    assert caught.value.output_tokens == 40
+
+
+def test_invalid_usage_does_not_become_a_receipt():
+    from app.core.provider_usage import ProviderUsageError
+
+    items = events()
+    items[-1]["response"]["usage"]["total_tokens"] = 1
+    with pytest.raises(AppError) as caught:
+        run(items)
+    assert not isinstance(caught.value, ProviderUsageError)

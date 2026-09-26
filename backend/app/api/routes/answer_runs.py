@@ -10,6 +10,7 @@ from app.core.rate_limits import RateLimiter
 from app.schemas.answer_run import RunList, RunRequest, RunResponse
 from app.schemas.health import ErrorResponse
 from app.schemas.index import IndexAction
+from app.schemas.usage_receipt import RunUsage
 from app.services.answer_runs import RunService
 
 router = APIRouter(
@@ -53,3 +54,8 @@ async def get(run_id: UUID, identity: Reader, service: Runs) -> RunResponse:
 @router.post("/answer-runs/{run_id}/cancel", response_model=RunResponse)
 async def cancel(run_id: UUID, data: IndexAction, identity: Writer, service: Runs) -> RunResponse:
     return await service.cancel(identity.user.id, run_id)
+
+
+@router.get("/answer-runs/{run_id}/usage", response_model=RunUsage)
+async def usage(run_id: UUID, identity: Reader, service: Runs) -> RunUsage:
+    return await service.usage(identity.user.id, run_id)

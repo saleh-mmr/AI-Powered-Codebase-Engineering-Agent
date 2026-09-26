@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import AppError
+from app.core.provider_usage import ProviderUsageError
 from app.core.rate_limits import Limit, RateLimiter
 from app.embeddings.provider import EmbeddingProvider, aggregate
 from app.repositories.search import SearchStore
@@ -16,6 +17,7 @@ from app.retrieval.ranking import fuse
 from app.retrieval.text import VERSION, query_terms
 from app.schemas.search import SearchHit, SearchRequest, SearchResponse
 from app.services.search_preparation import PreparationService
+from app.services.usage_receipts import ReceiptWriter
 
 logger = logging.getLogger("repopilot.retrieval")
 
@@ -36,6 +38,7 @@ class SearchService:
             settings,
             provider,
         )
+        self.receipts: ReceiptWriter | None = None
         self.store = SearchStore(db)
         self.preparation = PreparationService(db, limiter, settings)
 
@@ -99,7 +102,23 @@ class SearchService:
                     / 1000000,
                 },
             )
-            response = await self.provider.embed(parts)
+            receipt_id = (
+                await self.receipts.begin(
+                    "query_embedding",
+                    self.provider.profile,
+                    self.settings.embedding_price_per_million,
+                )
+                if self.receipts
+                else None
+            )
+            try:
+                response = await self.provider.embed(parts)
+            except ProviderUsageError as exc:
+                if self.receipts and receipt_id:
+                    await self.receipts.finish(receipt_id, exc.input_tokens, exc.output_tokens)
+                raise
+            if self.receipts and receipt_id:
+                await self.receipts.finish(receipt_id, response.input_tokens, 0)
             if len(response.vectors) != len(parts) or response.input_tokens != sum(map(len, parts)):
                 raise AppError("embedding_invalid", "Query embedding did not match its input.", 502)
             vector = aggregate(response.vectors, list(map(len, parts)))

@@ -9,9 +9,11 @@ from app.models.run_event import RunEvent
 from app.models.search import SearchDocument
 from app.models.search_index import SearchIndex
 from app.models.session import Session
+from app.models.usage_receipt import UsageReceipt
 from app.models.user import User
 
 __all__ = [
+    "UsageReceipt",
     "Conversation",
     "Message",
     "AnswerRun",

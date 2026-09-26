@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from 'react';
 import { RunTimeline } from './RunTimeline';
+import { RunUsage } from './RunUsage';
 import { ApiError } from '../../lib/api/http';
 import { getAnswerSettings, type AnswerSettings } from '../answers/api';
 import type { SearchMode } from '../search/api';
@@ -268,6 +269,7 @@ export function RunComposer({
             {run.status === 'completed' && (
               <p>Saved in the conversation history above.</p>
             )}
+            <RunUsage runId={run.id} onExpired={onExpired} />
             {run.usage_state === 'recorded' ? (
               <p className="field-help">
                 {run.input_tokens} input / {run.output_tokens} output tokens ·

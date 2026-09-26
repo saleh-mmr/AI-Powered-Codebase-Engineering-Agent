@@ -1,16 +1,19 @@
 import asyncio
 import os
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import Settings
 from app.database.session import create_engine
-from app.models import Conversation, Message, Repository, User
+from app.models import AnswerRun, Conversation, Message, Repository, UsageReceipt, User
 from app.repositories.conversation import ConversationStore
 from app.schemas.answer import AnswerResponse
+from app.services.usage_receipts import ReceiptWriter
 
 
 @pytest.mark.integration
@@ -102,6 +105,45 @@ def test_concurrent_transcript_appends_on_postgres():
                     assert [messages[i].role, messages[i + 1].role] == ["user", "assistant"]
                 conversation = await db.get(Conversation, conversation_id)
                 assert conversation.message_count == 6
+            # Real PostgreSQL validates receipt constraints and independent transaction lifetime.
+            run_id, token = uuid4(), uuid4()
+            async with factory() as db:
+                db.add(
+                    AnswerRun(
+                        id=run_id,
+                        conversation_id=conversation_id,
+                        request_key=uuid4(),
+                        request_hash="a" * 64,
+                        question="test",
+                        mode="keyword",
+                        source_index_id=uuid4(),
+                        config_hash="a" * 64,
+                        model="fixture",
+                        status="running",
+                        receipt_version=1,
+                        lease_token=token,
+                        lease_expires_at=datetime.now(UTC) + timedelta(seconds=60),
+                    )
+                )
+                await db.commit()
+            writer = ReceiptWriter(factory, run_id, token)
+            receipt_id = await writer.begin("generation", "fixture", 0.4, 1.6)
+            async with factory() as db:
+                await db.execute(
+                    update(AnswerRun)
+                    .where(AnswerRun.id == run_id)
+                    .values(status="cancelled", lease_token=None)
+                )
+                await db.commit()
+            await writer.finish(receipt_id, 100, 40)
+            async with factory() as db:
+                receipt = await db.get(UsageReceipt, receipt_id)
+                assert receipt.estimated_cost_usd == Decimal("0.000104")
+                await db.execute(delete(Conversation).where(Conversation.id == conversation_id))
+                await db.commit()
+            async with factory() as db:
+                assert await db.get(UsageReceipt, receipt_id) is None
+
         finally:
             async with engine.begin() as conn:
                 await conn.execute(delete(User).where(User.id == user_id))

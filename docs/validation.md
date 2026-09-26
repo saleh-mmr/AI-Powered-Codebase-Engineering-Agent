@@ -237,3 +237,41 @@ availability and live transport compatibility still need the documented acceptan
 No paid calls were made. UI snapshots are coalesced through one-second polling, so
 no sub-second latency or individual-token display guarantee is claimed.
 Full per-call usage receipts remain 7C3.
+
+
+## Milestone 7C3 / Milestone 7 completion
+
+7C2B was subsequently reported complete by the user. Remaining Milestone 7 implementation
+is delivered. Milestone 8 has not been started. Final local acceptance is still required.
+
+Verified here on 2026-09-26:
+
+- Full backend suite after receipt implementation: 207 passed, seven integration tests
+  skipped, two existing Starlette/AnyIO deprecation warnings.
+- After adding further edge-case coverage: targeted receipt API/provider-stream suite
+  passed all 23 tests, including five additional cases; embedding usage-error suite passed
+  both new cases. No paid calls were made. These focused runs extend the full-suite result;
+  they are not represented as a second full-suite run.
+- Ruff lint and format pass; strict mypy passes all 122 application modules.
+- Frontend TypeScript/ESLint/Prettier pass, 51 tests pass across 11 files, production build passes.
+- Receipt tests cover pre-call durability, known usage after citation/schema failure or
+  cancellation, unknown provider failures, idempotent worker delivery, ownership, legacy
+  coverage, decimal rate estimates, immutable completion, cascading deletion and no resurrection.
+- Fragmented provider streams retain independently validated usage after rejected final
+  schema/text or incomplete status. Inconsistent usage never becomes a known receipt.
+- Embedding adapters preserve valid usage even when vectors fail validation; mismatched
+  counts stay unknown. Ordinary generation/embedding regression tests remain passing.
+- Both answer evaluation fixtures validate (8 and 4 cases) in stream mode, with zero calls.
+- Offline Alembic SQL generation reaches 0011_usage_receipts. ORM and migration definitions
+  include the FK, unique lookup index, numeric fields and null/nonnegative constraints.
+- The exact upgrade patch is checked/applied to the 7C2B archive and compared byte-for-byte
+  with the packaged source. The final ZIP is integrity-tested.
+
+Not executed here: actual migration/drift check on PostgreSQL, receipt locking under real
+concurrency, Docker image builds/startup, Redis/Celery integration, live browser acceptance,
+actual GitHub Actions or paid model evaluation. Docker/PostgreSQL binaries were unavailable.
+The existing PostgreSQL integration test was extended for cancelled-run receipts/cascades;
+its presence is not evidence that it ran. Follow milestone-7c3.md and mvp-acceptance.md.
+
+Accounting scope is background generation and query embedding, not full invoice
+reconciliation or indexing/standalone-call accounting. Unknown receipt cost is never zero.

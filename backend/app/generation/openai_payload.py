@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.errors import AppError
+from app.core.provider_usage import ProviderUsageError
 from app.generation.contracts import AnswerDraft, GenerationResult
 
 
@@ -31,7 +32,7 @@ class ResponsePayload(BaseModel):
     usage: Usage
 
 
-def validate_response(value: object, model: str, max_output_tokens: int) -> GenerationResult:
+def _validate_response(value: object, model: str, max_output_tokens: int) -> GenerationResult:
     data = ResponsePayload.model_validate(value)
     if data.status != "completed":
         raise AppError(
@@ -58,3 +59,29 @@ def validate_response(value: object, model: str, max_output_tokens: int) -> Gene
         input_tokens=data.usage.input_tokens,
         output_tokens=data.usage.output_tokens,
     )
+
+
+def validate_response(value: object, model: str, max_output_tokens: int) -> GenerationResult:
+    # Validate usage separately so invalid answer JSON does not erase a known charge.
+    usage = None
+    if isinstance(value, dict) and value.get("model") == model:
+        try:
+            candidate = Usage.model_validate(value.get("usage"))
+            if (
+                candidate.total_tokens == candidate.input_tokens + candidate.output_tokens
+                and candidate.output_tokens <= max_output_tokens
+            ):
+                usage = candidate
+        except ValueError:
+            pass  # Usage itself is untrusted; the full validator below rejects it.
+    try:
+        return _validate_response(value, model, max_output_tokens)
+    except (AppError, ValueError, TypeError) as exc:
+        if usage is None:
+            raise
+        error = (
+            exc
+            if isinstance(exc, AppError)
+            else AppError("model_invalid", "Model output failed validation.", 502)
+        )
+        raise ProviderUsageError(error, usage.input_tokens, usage.output_tokens) from None
