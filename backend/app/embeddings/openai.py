@@ -4,6 +4,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.core.errors import AppError
+from app.core.provider_usage import ProviderUsageError
 from app.embeddings.provider import MODEL, PROFILE, EmbeddingBatch, normalize
 from app.embeddings.tokens import token_parts
 
@@ -39,6 +40,7 @@ class OpenAIEmbeddings:
             raise ValueError("Invalid embedding batch")
         if sum(map(len, inputs)) > 250000:
             raise ValueError("Embedding batch token limit exceeded")
+        known_tokens: int | None = None
         try:
             async with self.client.stream(
                 "POST",
@@ -73,7 +75,12 @@ class OpenAIEmbeddings:
                         raise AppError(
                             "embedding_invalid", "Embedding response exceeded its size limit.", 502
                         )
-            data = Payload.model_validate(json.loads(body))
+            raw = json.loads(body)
+            if isinstance(raw, dict) and raw.get("model") == MODEL:
+                usage = Usage.model_validate(raw.get("usage"))
+                if usage.prompt_tokens == sum(map(len, inputs)):
+                    known_tokens = usage.prompt_tokens
+            data = Payload.model_validate(raw)
             if data.model != MODEL or sorted(x.index for x in data.data) != list(
                 range(len(inputs))
             ):
@@ -88,7 +95,14 @@ class OpenAIEmbeddings:
             raise AppError(
                 "embedding_unavailable", "Embedding provider is unavailable. Retry later.", 503
             ) from None
-        except (ValidationError, ValueError, TypeError):
-            raise AppError(
-                "embedding_invalid", "Embedding provider returned an invalid response.", 502
-            ) from None
+        except (AppError, ValidationError, ValueError, TypeError) as exc:
+            error = (
+                exc
+                if isinstance(exc, AppError)
+                else AppError(
+                    "embedding_invalid", "Embedding provider returned an invalid response.", 502
+                )
+            )
+            if known_tokens is not None:
+                raise ProviderUsageError(error, known_tokens, 0) from None
+            raise error from None

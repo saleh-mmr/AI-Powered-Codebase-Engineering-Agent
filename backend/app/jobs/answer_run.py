@@ -16,6 +16,7 @@ from app.repositories.conversation import ConversationStore
 from app.repositories.run_event import append_state
 from app.schemas.answer import AnswerRequest
 from app.services.answers import AnswerService
+from app.services.usage_receipts import ReceiptWriter
 
 logger = logging.getLogger("repopilot.answer_worker")
 
@@ -98,7 +99,10 @@ async def run_answer(
             history = [HistoryTurn.model_validate(turn) for turn in run.history]
             await db.commit()
             preview = PreviewWriter(factory, run_id, token)
-            answer = await build_answer(db).answer(
+            service = build_answer(db)
+            service.receipts = ReceiptWriter(factory, run_id, token)
+            service.search.receipts = service.receipts
+            answer = await service.answer(
                 user_id,
                 repository_id,
                 request,

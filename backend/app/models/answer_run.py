@@ -65,6 +65,7 @@ class AnswerRun(Base):
     config_hash: Mapped[str] = mapped_column(String(64))
     model: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), server_default="queued")
+    receipt_version: Mapped[int] = mapped_column(Integer, server_default="0")
     usage_state: Mapped[str] = mapped_column(String(20), server_default="not_started")
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import AppError
+from app.core.provider_usage import ProviderUsageError
 from app.core.rate_limits import Limit, RateLimiter
 from app.generation.context import (
     INSTRUCTIONS,
@@ -33,6 +34,7 @@ from app.repositories.repository import RepositoryStore
 from app.schemas.answer import AnswerRequest, AnswerResponse, AnswerSettings
 from app.schemas.search import SearchRequest
 from app.services.search import SearchService
+from app.services.usage_receipts import ReceiptWriter
 
 logger = logging.getLogger("repopilot.answers")
 
@@ -48,6 +50,7 @@ class AnswerService:
     ) -> None:
         self.db, self.search, self.limiter = db, search, limiter
         self.settings, self.provider = settings, provider
+        self.receipts: ReceiptWriter | None = None
 
     async def configuration(self, user_id: UUID, repository_id: UUID) -> AnswerSettings:
         await RepositoryStore(self.db).owned(user_id, repository_id)
@@ -155,12 +158,29 @@ class AnswerService:
                     "result_count": len(retrieved.context),
                 },
             )
-            if on_delta is not None and isinstance(self.provider, StreamingAnswerProvider):
-                generated = await self.provider.generate_stream(INSTRUCTIONS, payload, on_delta)
-            else:
-                generated = await self.provider.generate(INSTRUCTIONS, payload)
+            receipt_id = (
+                await self.receipts.begin(
+                    "generation",
+                    self.provider.model,
+                    self.settings.answer_input_price_per_million,
+                    self.settings.answer_output_price_per_million,
+                )
+                if self.receipts
+                else None
+            )
+            try:
+                if on_delta is not None and isinstance(self.provider, StreamingAnswerProvider):
+                    generated = await self.provider.generate_stream(INSTRUCTIONS, payload, on_delta)
+                else:
+                    generated = await self.provider.generate(INSTRUCTIONS, payload)
+            except ProviderUsageError as exc:
+                if self.receipts and receipt_id:
+                    await self.receipts.finish(receipt_id, exc.input_tokens, exc.output_tokens)
+                raise
             # Revalidate the provider boundary even when another adapter is introduced later.
             result = GenerationResult.model_validate(generated.model_dump())
+            if self.receipts and receipt_id:
+                await self.receipts.finish(receipt_id, result.input_tokens, result.output_tokens)
             cost = (
                 result.input_tokens * self.settings.answer_input_price_per_million
                 + result.output_tokens * self.settings.answer_output_price_per_million

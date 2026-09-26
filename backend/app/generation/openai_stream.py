@@ -8,6 +8,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.errors import AppError
+from app.core.provider_usage import ProviderUsageError
 from app.generation.contracts import DeltaSink, GenerationResult
 from app.generation.openai_payload import ResponsePayload, validate_response
 
@@ -70,6 +71,8 @@ async def consume_stream(
             "response.failed",
             "response.incomplete",
         }:
+            if value.get("response") is not None:
+                validate_response(value.get("response"), model, output_cap)
             raise AppError("model_incomplete", "Model stream did not complete successfully.", 502)
         event = Envelope.model_validate(value)
         if event.sequence_number <= sequence:
@@ -86,19 +89,26 @@ async def consume_stream(
                 raise ValueError("Model text exceeds limit")
             await on_delta(delta.delta)
         elif event.type == "response.completed":
+            result = validate_response(value.get("response"), model, output_cap)
             payload = ResponsePayload.model_validate(value.get("response"))
-            result = validate_response(payload.model_dump(), model, output_cap)
-            if not result.refused:
-                if identity is None:
-                    raise ValueError("Missing text deltas")
-                item_id, output_index, content_index = identity
-                if output_index >= len(payload.output):
-                    raise ValueError("Invalid output index")
-                item = payload.output[output_index]
-                if item.id != item_id or content_index >= len(item.content):
-                    raise ValueError("Invalid output identity")
-                if item.content[content_index].text != accumulated:
-                    raise ValueError("Completed text differs from streamed text")
+            try:
+                if not result.refused:
+                    if identity is None:
+                        raise ValueError("Missing text deltas")
+                    item_id, output_index, content_index = identity
+                    if output_index >= len(payload.output):
+                        raise ValueError("Invalid output index")
+                    item = payload.output[output_index]
+                    if item.id != item_id or content_index >= len(item.content):
+                        raise ValueError("Invalid output identity")
+                    if item.content[content_index].text != accumulated:
+                        raise ValueError("Completed text differs from streamed text")
+            except ValueError:
+                raise ProviderUsageError(
+                    AppError("model_invalid", "Model output failed validation.", 502),
+                    result.input_tokens,
+                    result.output_tokens,
+                ) from None
             return result
         # Lifecycle/refusal metadata is not rendered. No reasoning/tool contents leave this adapter.
     raise AppError("model_incomplete", "Model stream ended before completion.", 502)

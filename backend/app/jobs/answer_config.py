@@ -10,6 +10,7 @@ from app.retrieval.text import VERSION
 def config_hash(settings: Settings) -> str:
     # Only public model configuration, never API keys or database credentials.
     configuration = {
+        "receipts": 1,
         "model": settings.answer_model,
         "generation_transport": "responses-stream-v1",
         "output_cap": settings.answer_max_output_tokens,

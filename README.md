@@ -1,7 +1,7 @@
 # RepoPilot AI
 
 A repository-understanding application that will grow into a controlled software
-engineering agent. **Current scope: Milestone 7C2B, provider streaming and provisional answers.**
+engineering agent. **Current scope: Milestone 7, repository-understanding MVP implemented; final local acceptance pending.**
 React/TypeScript/Vite, FastAPI, PostgreSQL/pgvector, Redis, Celery, and a durable
 job dispatcher now support authenticated imports, progress, and basic source browsing.
 Static indexing, a React source/search inspector, keyword/symbol retrieval and optional
@@ -10,9 +10,12 @@ Conversations save completed Q&A with source snapshots. Named conversations use 
 background runs with reload recovery and bounded recent dialogue context. New claims
 still require current source evidence. Run-state events now stream over SSE with replay.
 Background answers now stream provisional text. Only completed, validated responses
-enter saved history. Fuller usage receipts and final MVP acceptance remain next.
+enter saved history. Per-call receipts retain known generation/query-embedding usage even
+when publication fails or is cancelled. Unknown calls are never represented as free.
+Milestone 8 agents have not been started.
 
-**Upgrading from Milestone 7C2A?** Follow [the Milestone 7C2B upgrade guide](docs/milestone-7c2b.md).
+**Upgrading from Milestone 7C2B?** Follow [the Milestone 7 completion guide](docs/milestone-7c3.md).
+Use [the MVP acceptance checklist](docs/mvp-acceptance.md) before advancing.
 It preserves your existing `.env`, users, sessions, and PostgreSQL volume.
 
 ## Requirements
@@ -57,7 +60,7 @@ docker compose run --rm migrate alembic current
 ```
 
 Each HTTP call should return 200 and `{"status":"ok","service":"repopilot-api"}`.
-The migration should report `0010_answer_preview (head)`.
+The migration should report `0011_usage_receipts (head)`.
 The frontend proxy and direct API checks deliberately use different URL prefixes.
 
 ## Verify dependency failure and recovery

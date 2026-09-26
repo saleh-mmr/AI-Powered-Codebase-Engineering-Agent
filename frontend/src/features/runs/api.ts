@@ -58,3 +58,34 @@ export async function cancelRun(id: string, csrf: string): Promise<AnswerRun> {
     }),
   );
 }
+
+const usageSchema = z.object({
+  tracked: z.boolean(),
+  known_cost_usd: z.string(),
+  unknown_calls: z.number().int().nonnegative(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      kind: z.enum(['generation', 'query_embedding']),
+      model: z.string(),
+      input_rate: z.string(),
+      output_rate: z.string(),
+      input_tokens: z.number().nullable(),
+      output_tokens: z.number().nullable(),
+      estimated_cost_usd: z.string().nullable(),
+      started_at: z.string(),
+      finished_at: z.string().nullable(),
+    }),
+  ),
+});
+export type RunUsageData = z.infer<typeof usageSchema>;
+export async function getRunUsage(
+  id: string,
+  signal: AbortSignal,
+): Promise<RunUsageData> {
+  return usageSchema.parse(
+    await requestJSON(`/answer-runs/${id}/usage`, {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
+    }),
+  );
+}
